@@ -17,8 +17,8 @@ class Chunk:
     chunk_size: int
     char_start: int
     char_end: int
-    time_start: str
-    time_end: str
+    time_start: str | None
+    time_end: str | None
     name_space: str
 
     def to_dict(self) -> dict:

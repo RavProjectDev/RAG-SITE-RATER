@@ -2,27 +2,34 @@ import time
 import uuid
 from flask import Blueprint, request, jsonify
 
-from rav_api.rav_endpoint.pre_process import pre_process
-from rav_api.rav_endpoint.llm import prompt_manager, get_llm_response
-from rav_api.rav_endpoint.exceptions import BaseAppException
-from rav_api.rav_endpoint.util import verify
+from rav_endpoint.pre_process import pre_process
+from rav_endpoint.llm import prompt_manager, get_llm_response
+from rav_endpoint.exceptions import BaseAppException
+from rav_endpoint.util import verify
+from rav_endpoint.classes import Document
 
 from shared.embedding.embed import embed
 from shared.constants import  (
-        MONGO_URI,
-        MONGO_DB_NAME ,
-        MONGO_COLLECTION ,
-        MONGO_INDEX
+        MONGODB_URI,
+        MONGODB_DB_NAME ,
+        MONGODB_VECTOR_COLLECTION ,
+        COLLECTION_INDEX
 )
 from shared.db.mongodb_connection import MongoConnection,Connection
 from shared.enums import EmbeddingConfiguration
-from shared.classes import Embedding, Document
+from shared.classes import Embedding
+
+# Type assertions for environment variables
+assert MONGODB_URI is not None, "MONGODB_URI environment variable is not set"
+assert MONGODB_DB_NAME is not None, "MONGODB_DB_NAME environment variable is not set"
+assert MONGODB_VECTOR_COLLECTION is not None, "MONGODB_VECTOR_COLLECTION environment variable is not set"
+assert COLLECTION_INDEX is not None, "COLLECTION_INDEX environment variable is not set"
 
 connection: Connection = MongoConnection( 
-            uri=MONGO_URI, 
-            collection_name=MONGO_COLLECTION, 
-            index=MONGO_INDEX, 
-            db_name=MONGO_DB_NAME
+            uri=MONGODB_URI, 
+            collection_name=MONGODB_VECTOR_COLLECTION, 
+            index=COLLECTION_INDEX, 
+            db_name=MONGODB_DB_NAME
         )
 embedding_configuration = EmbeddingConfiguration.GEMINI
 
@@ -38,13 +45,16 @@ def process_user_question(user_question: str) -> str:
     """Pre-process user question"""
     return pre_process(user_question)
 
-def generate_embedding(user_question: str,configuration: EmbeddingConfiguration) -> Embedding:
+def generate_embedding(user_question: str,configuration: EmbeddingConfiguration) -> list[float]:
     """Get vector embedding for user question"""
-    return embed([user_question],configuration=configuration)
+    embeddings = embed([user_question],configuration=configuration)
+    # Extract the vector from the first (and only) embedding tuple
+    return embeddings[0][1] if embeddings else []
 
 def retrieve_documents(client: Connection, vector: list[float]) -> list[Document]:
     """Get relevant documents based on embedding"""
-    return client.retrieve(vector)
+    result = client.retrieve(vector)
+    return result if result is not None else []
 
 def run_prompt(user_question: str, data: list[Document]) -> str:
     """Generate LLM prompt"""

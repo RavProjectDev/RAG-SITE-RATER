@@ -1,5 +1,5 @@
 from pathlib import Path
-from data_embedder.logger_config import data_logger
+from shared.logger_config import data_logger
 
 def get_transcripts_from_local() -> list[tuple[str, str]]:
     """

@@ -2,13 +2,10 @@ from google.auth import default
 import vertexai
 from vertexai.language_models import TextEmbeddingInput, TextEmbeddingModel
 from sentence_transformers import SentenceTransformer
-from shared.enums import Configuration
+from shared.enums import EmbeddingConfiguration 
 from shared.logger_config import embedding_logger
 
 bert_small_model = SentenceTransformer("all-MiniLM-L6-v2")
-
-
-
 def bert_small(text_data: list[str]) -> list[tuple[str,list[float]]]:
     embedding_logger.info(f"Starting BERT small embedding for {len(text_data)} chunks")
     embeddings: list[tuple[str,list[float]]] = []
@@ -39,11 +36,11 @@ def gemini_embedding(text_data: list[str]) -> list[tuple[str,list[float]]]:
         )
         embeddings.append((text,vector[0].values))
     return embeddings
-def embed(data: list[str], configuration:Configuration) -> list[tuple[str,list[float]]]:
+def embed(data: list[str], configuration: EmbeddingConfiguration) -> list[tuple[str,list[float]]]:
     embedding_logger.info(f"Starting embedding process with configuration: {configuration.name}")
-    if configuration.value == Configuration.BERT_SMALL.value:
+    if configuration.value == EmbeddingConfiguration.BERT_SMALL.value:
         return bert_small(data)
-    elif configuration.value == Configuration.GEMINI.value:
+    elif configuration.value == EmbeddingConfiguration.GEMINI.value:
         return gemini_embedding(data)
     else:
         embedding_logger.error(f"Unsupported embedding configuration: {configuration.name}")

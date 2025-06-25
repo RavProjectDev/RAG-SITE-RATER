@@ -2,9 +2,17 @@ from dotenv import load_dotenv
 import os
 load_dotenv()
 
-MONGO_URI = os.getenv("MONGO_URI")
-MONGO_DB_NAME = os.getenv("MONGO_DB_NAME", "rag_db")
-MONGO_COLLECTION = os.getenv("MONGO_COLLECTION", "transcripts")
-MONGO_INDEX = os.getenv("MONGO_COLLECTION","vector_search")
+
 DEFAULT_K = 5
-DEFAULT_CHUNK_SIZE = 100 
+CHUNKING_SIZE = 100 
+
+
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+SBERT_API_URL = os.getenv("SBERT_API_URL")
+MONGODB_URI = os.getenv("MONGODB_URI")
+MONGODB_DB_NAME= os.getenv("MONGODB_DB")
+MONGODB_VECTOR_COLLECTION = os.getenv("MONGODB_VECTOR_COLLECTION")
+COLLECTION_INDEX = os.getenv("COLLECTION_INDEX")
+OPEN_AI_API = os.getenv("OPEN_AI_API")
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+GOOGLE_CLOUD_PROJECT_ID = os.getenv("GOOGLE_CLOUD_PROJECT_ID")

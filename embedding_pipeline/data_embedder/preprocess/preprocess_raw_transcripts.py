@@ -1,11 +1,10 @@
 import json
-
-from data_embedder.classes import Chunk
-from data_embedder.constants import CHUNKING_SIZE
 import pysrt
 
-from data_embedder.datastore.enums import TypeOfFormat
-from data_embedder.logger_config import preprocess_logger
+from shared.classes import Chunk
+from shared.constants import CHUNKING_SIZE
+from shared.enums import TypeOfFormat
+from shared.logger_config import preprocess_logger
 
 
 def build_chunk(subs, word_count, full_srt_text, search_start,name_space) -> tuple[Chunk, int]:
@@ -93,13 +92,13 @@ def chunk_txt(content: tuple[str, str]) -> list[Chunk]:
         end_idx = start_idx + len(chunk_text)
 
         chunk = Chunk(
-            metadata={
-                "namespace": file_name,
-            },
+            name_space=file_name,
             text=chunk_text,
             chunk_size=len(chunk_words),
             char_start=start_idx,
-            char_end=end_idx
+            char_end=end_idx,
+            time_end=None, 
+            time_start=None
         )
         chunks.append(chunk)
         char_idx = end_idx  # move past this chunk

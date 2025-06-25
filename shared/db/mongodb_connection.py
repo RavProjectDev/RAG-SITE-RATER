@@ -1,8 +1,10 @@
 from pymongo import MongoClient
+from typing import cast
 import certifi
-from shared.classes import Embedding
-from data_embedder.db.connection import Connection
-from data_embedder.logger_config import db_logger
+from dataclasses import asdict
+from shared.classes import Embedding,Document
+from shared.db.connection import Connection
+from shared.logger_config import db_logger
 
 
 class MongoConnection(Connection):
@@ -21,7 +23,7 @@ class MongoConnection(Connection):
     def insert(self, embedded_data: list[Embedding]):
         db_logger.info(f"Preparing to insert {len(embedded_data)} embeddings into MongoDB")
         try:
-            documents = [emb.to_dict() for emb in embedded_data]
+            documents = [asdict(emb) for emb in embedded_data]
             if documents:
                 db_logger.debug(f"Inserting {len(documents)} documents into MongoDB collection")
                 self.collection.insert_many(documents)
@@ -32,23 +34,30 @@ class MongoConnection(Connection):
             db_logger.error(f"Failed to insert documents into MongoDB: {str(e)}")
             raise
 
-    def query(self, query: list[float], k: int):
+    def retrieve(self, query: list[float], k: int):
         db_logger.info(f"Querying MongoDB vector index with query of length {len(query)} for top {k} results")
         try:
             pipeline = [
                 {
                     "$vectorSearch": {
                         "queryVector": query,
-                        "path": "embedding",
-                        "numCandidates": k * 5,
-                        "limit": k,
-                        "index": self.index
+                        "path": "vector",
+                        "numCandidates": 50,
+                        "limit": int(k),
+                        "index": self.index,
                     }
                 }
             ]
             results = list(self.collection.aggregate(pipeline))
-            db_logger.info(f"Retrieved {len(results)} documents from vector search")
-            return results
+            documents: list[Document] = []
+            for result in results:
+                document = Document(
+                    text=str(result.get("text")),
+                    vector=cast(list[float], result["vector"]),
+                    metadata=cast(dict[str, object], result["metadata"]),
+                )
+                documents.append(document)
+            return documents
         except Exception as e:
             db_logger.error(f"Vector search query failed: {str(e)}")
             raise
@@ -61,3 +70,4 @@ class MongoConnection(Connection):
         except Exception as e:
             db_logger.error(f"Error closing MongoDB connection: {str(e)}")
             raise
+

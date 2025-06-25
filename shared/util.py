@@ -1,6 +1,6 @@
 import functools
-logger = logging.getLogger(__name__)
 import logging
+logger = logging.getLogger(__name__)
 import time 
 def timing_decorator(func):
     """Decorator to log the execution time of functions"""

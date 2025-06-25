@@ -2,13 +2,12 @@ import argparse
 import os
 
 from dotenv import load_dotenv
-from data_embedder.db.mongodb_connection import MongoConnection
-from db.connection import Connection
-from db.insert import insert_to_db
+from shared.db.mongodb_connection import MongoConnection
+from shared.db.connection import Connection
 from shared.enums import DataBaseConfiguration,DataSourceConfiguration,TypeOfFormat,EmbeddingConfiguration
 from data_embedder.datastore.data_handler import get_data
 from preprocess.preprocess_raw_transcripts import run as preprocess_raw_transcripts
-from embedding.embed import embed
+from sharedembedding.embed import embed
 from shared.classes import Chunk, Embedding
 from shared.logger_config import logger
 
