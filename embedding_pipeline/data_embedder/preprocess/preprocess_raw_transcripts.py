@@ -1,10 +1,10 @@
 import json
 import pysrt
-
+import uuid
 from shared.classes import Chunk
 from shared.constants import CHUNKING_SIZE
 from shared.enums import TypeOfFormat
-from shared.logger_config import preprocess_logger
+from shared.logger_config import preprocess_logger, timing_decorator
 
 
 def build_chunk(subs, word_count, full_srt_text, search_start,name_space) -> tuple[Chunk, int]:
@@ -25,6 +25,7 @@ def build_chunk(subs, word_count, full_srt_text, search_start,name_space) -> tup
     char_end = char_start + len(chunk_text)
 
     chunk = Chunk(
+        id = uuid.uuid4(),
         time_start = str(start),
         time_end = str(end),
         text=chunk_text,
@@ -92,6 +93,7 @@ def chunk_txt(content: tuple[str, str]) -> list[Chunk]:
         end_idx = start_idx + len(chunk_text)
 
         chunk = Chunk(
+            id = uuid.uuid4(),
             name_space=file_name,
             text=chunk_text,
             chunk_size=len(chunk_words),
@@ -105,7 +107,7 @@ def chunk_txt(content: tuple[str, str]) -> list[Chunk]:
 
     preprocess_logger.debug(f"Created {len(chunks)} chunks from {file_name}")
     return chunks
-
+@timing_decorator(preprocess_logger)
 def run(raw_transcripts: list[tuple[str, str]],data_format: TypeOfFormat) -> list[Chunk]:
     """
     Processes raw transcripts by applying preprocessing steps, including:
@@ -139,6 +141,7 @@ def run(raw_transcripts: list[tuple[str, str]],data_format: TypeOfFormat) -> lis
     preprocess_logger.info(f"Preprocessing completed. Total chunks created: {len(cleaned_transcripts)}")
     return cleaned_transcripts
 
+@timing_decorator(preprocess_logger)
 def translate_chunks(chunks: list[Chunk]) -> list[tuple[str, Chunk]]:
     preprocess_logger.info(f"Starting translation of {len(chunks)} chunks")
     

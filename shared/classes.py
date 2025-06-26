@@ -1,5 +1,5 @@
 from dataclasses import dataclass, asdict
-
+import uuid
 
 @dataclass
 class Chunk:
@@ -20,10 +20,14 @@ class Chunk:
     time_start: str | None
     time_end: str | None
     name_space: str
+    id: uuid.UUID | None
 
     def to_dict(self) -> dict:
-        """Converts the Chunk instance to a dictionary."""
-        return asdict(self)
+        d = {k: v for k, v in asdict(self).items() if k != "text"}
+        for k, v in d.items():
+            if isinstance(v, uuid.UUID):
+                d[k] = str(v)
+        return d
 
 
 @dataclass
@@ -38,15 +42,14 @@ class VectorEmbedding:
     """
     vector: list[float]
     dimension: int
-    text: str
-    metadata: dict[str, str]
-
+    data: Chunk
     def to_dict(self) -> dict:
         """Converts the Embedding instance to a dictionary format for storage or transmission."""
+
         return {
             "vector": self.vector,
-            "text": self.text,
-            "metadata": self.metadata
+            "text": self.data.text,
+            "metadata": self.data.to_dict(),
         }
 
 

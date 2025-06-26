@@ -1,6 +1,8 @@
 from abc import ABC, abstractmethod
 from typing import List
-from shared.classes import Embedding
+from shared.classes import VectorEmbedding
+from shared.logger_config import timing_decorator,db_logger
+
 
 class Connection(ABC):
     """
@@ -14,7 +16,8 @@ class Connection(ABC):
         self.close()
 
     @abstractmethod
-    def insert(self, embedded_data: list[Embedding]):
+    @timing_decorator(db_logger)
+    def insert(self, embedded_data: list[VectorEmbedding]):
         """
         Inserts one vector to the database.
         :param embedded_data:
@@ -24,6 +27,7 @@ class Connection(ABC):
         pass
     
     @abstractmethod
+    @timing_decorator(db_logger)
     def retrieve(self, embedded_data: list[float]):
         """
         Retrieves documents based on vector 

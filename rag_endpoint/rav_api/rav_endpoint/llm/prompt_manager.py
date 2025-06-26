@@ -1,13 +1,8 @@
-import logging
-from rav_endpoint.classes import Document
-from rav_endpoint.util import timing_decorator
+from shared.classes import Document
 
-logger = logging.getLogger(__name__)
 
-@timing_decorator
 def generate_prompt(user_question: str, data: list[Document], max_tokens: int = 1500) -> str:
-    logger.info("Starting prompt generation")
-    
+
     def estimate_tokens(text: str) -> int:
         return len(text) // 4  # Rough approximation
 
@@ -59,7 +54,6 @@ def generate_prompt(user_question: str, data: list[Document], max_tokens: int = 
         user_question=user_question,
     )
 
-    logger.info(f"Generated prompt with {token_count} estimated tokens from {len(context_parts)} documents")
 
     return filled_prompt
 
