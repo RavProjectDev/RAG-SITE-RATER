@@ -93,10 +93,10 @@ def stream():
         prompt, meta_data = generate(event)
 
         def stream_response(metadata):
-            yield json.dumps({"metadata": metadata})
+            yield f"data: {json.dumps({'metadata': metadata})}\n\n"
             for chunk in get_llm_response.stream_llm_response_from_generated_prompt(prompt):
-                payload = json.dumps({"data": chunk})
-                yield payload
+                yield f"data: {json.dumps({'data': chunk})}\n\n"
+            yield "data: [DONE]\n\n"
 
         return Response(stream_response(meta_data), content_type='text/event-stream')
     except BaseAppException as e:

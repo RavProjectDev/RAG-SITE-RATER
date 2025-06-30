@@ -1,8 +1,7 @@
 import pytest
 import json
 from flask import Flask
-from rav_api.app import chat_bp  # Adjust if blueprint is in another path
-
+from rag_endpoint.rav_api.rav_endpoint.main import chat_bp
 @pytest.fixture
 def app():
     app = Flask(__name__)
@@ -23,7 +22,6 @@ def test_valid_request(client):
     assert "message" in response.get_json()
 
 def test_invalid_request_format(client):
-    # Missing user_question or malformed input
     request_body = {"not_expected_key": "..."}
 
     response = client.post("/chat/", data=json.dumps(request_body), content_type="application/json")
@@ -34,3 +32,4 @@ def test_empty_request(client):
     response = client.post("/chat/", data=json.dumps({}), content_type="application/json")
     assert response.status_code == 400
     assert "error" in response.get_json()
+
