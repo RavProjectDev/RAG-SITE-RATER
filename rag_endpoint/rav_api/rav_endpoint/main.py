@@ -1,7 +1,7 @@
 import json
 import uuid
 
-from flask import Blueprint, request, jsonify, Response
+from flask import Blueprint, jsonify, request, Response
 
 from rag_endpoint.rav_api.rav_endpoint.classes import Document
 from rag_endpoint.rav_api.rav_endpoint.exceptions import BaseAppException
@@ -12,7 +12,7 @@ from shared.constants import (
     MONGODB_URI,
     MONGODB_DB_NAME,
     MONGODB_VECTOR_COLLECTION,
-    COLLECTION_INDEX
+    COLLECTION_INDEX,
 )
 from shared.db.mongodb_connection import MongoConnection, Connection
 from shared.embedding.embed import embed
@@ -20,14 +20,16 @@ from shared.enums import EmbeddingConfiguration
 
 assert MONGODB_URI is not None, "MONGODB_URI environment variable is not set"
 assert MONGODB_DB_NAME is not None, "MONGODB_DB_NAME environment variable is not set"
-assert MONGODB_VECTOR_COLLECTION is not None, "MONGODB_VECTOR_COLLECTION environment variable is not set"
+assert (
+    MONGODB_VECTOR_COLLECTION is not None
+), "MONGODB_VECTOR_COLLECTION environment variable is not set"
 assert COLLECTION_INDEX is not None, "COLLECTION_INDEX environment variable is not set"
 
 connection: Connection = MongoConnection(
     uri=MONGODB_URI,
     collection_name=MONGODB_VECTOR_COLLECTION,
     index=COLLECTION_INDEX,
-    db_name=MONGODB_DB_NAME
+    db_name=MONGODB_DB_NAME,
 )
 embedding_configuration = EmbeddingConfiguration.GEMINI
 
@@ -44,7 +46,9 @@ def process_user_question(user_question: str) -> str:
     return pre_process(user_question)
 
 
-def generate_embedding(user_question: str, configuration: EmbeddingConfiguration) -> list[float]:
+def generate_embedding(
+    user_question: str, configuration: EmbeddingConfiguration
+) -> list[float]:
     """Get vector embedding for user question"""
     vector: list[float] = embed(user_question, configuration=configuration)
     return vector
@@ -58,16 +62,11 @@ def retrieve_documents(client: Connection, vector: list[float]) -> list[Document
 
 def run_prompt(user_question: str, data: list[Document]) -> str:
     """Generate LLM prompt"""
-    return prompt_manager.generate_prompt(
-        user_question=user_question, data=data
-    )
+    return prompt_manager.generate_prompt(user_question=user_question, data=data)
 
 
 def get_llm_response_from_generated_prompt(prompt: str):
-    return get_llm_response.run_generated_prompt(
-        prompt=prompt,
-        model="o4-mini"
-    )
+    return get_llm_response.run_generated_prompt(prompt=prompt, model="o4-mini")
 
 
 @chat_bp.route("/", methods=["POST"])
@@ -76,14 +75,12 @@ def handler():
         event = request.get_json()
         prompt, metadata = generate(event)
         llm_response: str = get_llm_response_from_generated_prompt(prompt)
-        response = {
-            "message": llm_response,
-            "metadata": metadata}
+        response = {"message": llm_response, "metadata": metadata}
         return jsonify(response), 200
     except BaseAppException as e:
-        return jsonify({"error": e.message}), 400
+        return jsonify({"error": str(e)}), 400
     except Exception as e:
-        return jsonify({"error": f"{str(e)}"}), 400
+        return jsonify({"error": str(e)}), 500
 
 
 @chat_bp.route("/stream", methods=["POST"])
@@ -94,15 +91,17 @@ def stream():
 
         def stream_response(metadata):
             yield f"data: {json.dumps({'metadata': metadata})}\n\n"
-            for chunk in get_llm_response.stream_llm_response_from_generated_prompt(prompt):
+            for chunk in get_llm_response.stream_llm_response_from_generated_prompt(
+                prompt
+            ):
                 yield f"data: {json.dumps({'data': chunk})}\n\n"
             yield "data: [DONE]\n\n"
 
-        return Response(stream_response(meta_data), content_type='text/event-stream')
+        return Response(stream_response(meta_data), content_type="text/event-stream")
     except BaseAppException as e:
-        return jsonify({"error": e.message}), 400
+        return jsonify({"error": str(e)}), 400
     except Exception as e:
-        return Response({"error": f"{str(e)}"}, content_type='text/event-stream',status=500)
+        return jsonify({"error": str(e)}), 500
 
 
 def generate(event):
@@ -115,9 +114,6 @@ def generate(event):
 
     user_question: str = process_user_question(data_message)
     vector: list[float] = generate_embedding(user_question, embedding_configuration)
-    data: list[Document] = retrieve_documents(
-        client=connection,
-        vector=vector
-    )
+    data: list[Document] = retrieve_documents(client=connection, vector=vector)
     prompt: str = run_prompt(user_question, data)
     return prompt, [datum.metadata for datum in data]

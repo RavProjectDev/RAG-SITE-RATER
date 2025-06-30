@@ -4,6 +4,8 @@ from flask import Flask
 from rag_endpoint.rav_api.rav_endpoint.main import chat_bp
 
 endpoint = "/chat/stream"
+
+
 @pytest.fixture
 def app():
     app = Flask(__name__)
@@ -14,14 +16,12 @@ def app():
 @pytest.fixture
 def client(app):
     return app.test_client()
+
+
 def test_chat_stream(client):
-    request_body = {
-        "question": "Why did Moshe sacrifice his family life?"
-    }
+    request_body = {"question": "Why did Moshe sacrifice his family life?"}
     response = client.post(
-        "/chat/stream",
-        data=json.dumps(request_body),
-        content_type="application/json"
+        "/chat/stream", data=json.dumps(request_body), content_type="application/json"
     )
     assert response.status_code == 200
 
@@ -39,7 +39,7 @@ def test_chat_stream(client):
         if not line.startswith("data: "):
             continue
 
-        json_str = line[len("data: "):]
+        json_str = line[len("data: ") :]
         if json_str == "[DONE]":
             continue
 
@@ -56,14 +56,28 @@ def test_chat_stream(client):
     assert found_metadata, "Expected a metadata chunk but found none."
     assert found_data, "Expected at least one data chunk but found none."
 
+
 def test_invalid_request_format(client):
     request_body = {"not_expected_key": "..."}
 
-    response = client.post(endpoint, data=json.dumps(request_body), content_type="application/json")
-    assert response.status_code == 400
-    assert "error" in response.get_json()
+    response = client.post(
+        endpoint, data=json.dumps(request_body), content_type="application/json"
+    )
+    assert (
+        response.status_code == 400
+    ), f"Expected 400 but received {response.status_code}"
+    assert (
+        "error" in response.get_json()
+    ), f"Expected error but received {response.get_json()['error']}"
+
 
 def test_empty_request(client):
-    response = client.post(endpoint, data=json.dumps({}), content_type="application/json")
-    assert response.status_code == 400
-    assert "error" in response.get_json()
+    response = client.post(
+        endpoint, data=json.dumps({}), content_type="application/json"
+    )
+    assert (
+        response.status_code == 400
+    ), f"Expected 400 but received {response.status_code}"
+    assert (
+        "error" in response.get_json()
+    ), f"Expected error but received {response.get_json()['error']}"
