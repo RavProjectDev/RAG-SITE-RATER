@@ -102,7 +102,7 @@ def stream():
     except BaseAppException as e:
         return jsonify({"error": e.message}), 400
     except Exception as e:
-        return jsonify({"error": "Unexpected server error"}), 400
+        return Response({"error": f"{str(e)}"}, content_type='text/event-stream',status=500)
 
 
 def generate(event):
