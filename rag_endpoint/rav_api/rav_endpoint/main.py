@@ -1,96 +1,109 @@
-import time
+import json
 import uuid
-from flask import Blueprint, request, jsonify,Response
 
-from rag_endpoint.rav_api.rav_endpoint.pre_process import pre_process
-from rag_endpoint.rav_api.rav_endpoint.llm import prompt_manager, get_llm_response
-from rag_endpoint.rav_api.rav_endpoint.exceptions import BaseAppException
-from rag_endpoint.rav_api.rav_endpoint.util import verify
+from flask import Blueprint, request, jsonify, Response
+
 from rag_endpoint.rav_api.rav_endpoint.classes import Document
-
-from shared.embedding.embed import embed
-from shared.constants import  (
-        MONGODB_URI,
-        MONGODB_DB_NAME ,
-        MONGODB_VECTOR_COLLECTION ,
-        COLLECTION_INDEX
+from rag_endpoint.rav_api.rav_endpoint.exceptions import BaseAppException
+from rag_endpoint.rav_api.rav_endpoint.llm import prompt_manager, get_llm_response
+from rag_endpoint.rav_api.rav_endpoint.pre_process import pre_process
+from rag_endpoint.rav_api.rav_endpoint.util import verify
+from shared.constants import (
+    MONGODB_URI,
+    MONGODB_DB_NAME,
+    MONGODB_VECTOR_COLLECTION,
+    COLLECTION_INDEX
 )
-from shared.db.mongodb_connection import MongoConnection,Connection
+from shared.db.mongodb_connection import MongoConnection, Connection
+from shared.embedding.embed import embed
 from shared.enums import EmbeddingConfiguration
+
 assert MONGODB_URI is not None, "MONGODB_URI environment variable is not set"
 assert MONGODB_DB_NAME is not None, "MONGODB_DB_NAME environment variable is not set"
 assert MONGODB_VECTOR_COLLECTION is not None, "MONGODB_VECTOR_COLLECTION environment variable is not set"
 assert COLLECTION_INDEX is not None, "COLLECTION_INDEX environment variable is not set"
 
-connection: Connection = MongoConnection( 
-            uri=MONGODB_URI, 
-            collection_name=MONGODB_VECTOR_COLLECTION, 
-            index=COLLECTION_INDEX, 
-            db_name=MONGODB_DB_NAME
-        )
+connection: Connection = MongoConnection(
+    uri=MONGODB_URI,
+    collection_name=MONGODB_VECTOR_COLLECTION,
+    index=COLLECTION_INDEX,
+    db_name=MONGODB_DB_NAME
+)
 embedding_configuration = EmbeddingConfiguration.GEMINI
 
-        
-
 import logging
+
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 
 chat_bp = Blueprint("chat", __name__)
 
+
 def process_user_question(user_question: str) -> str:
     """Pre-process user question"""
     return pre_process(user_question)
 
-def generate_embedding(user_question: str,configuration: EmbeddingConfiguration) -> list[float]:
+
+def generate_embedding(user_question: str, configuration: EmbeddingConfiguration) -> list[float]:
     """Get vector embedding for user question"""
-    vector: list[float] = embed(user_question,configuration=configuration)
+    vector: list[float] = embed(user_question, configuration=configuration)
     return vector
+
 
 def retrieve_documents(client: Connection, vector: list[float]) -> list[Document]:
     """Get relevant documents based on embedding"""
     result = client.retrieve(vector)
     return result if result is not None else []
 
+
 def run_prompt(user_question: str, data: list[Document]) -> str:
     """Generate LLM prompt"""
     return prompt_manager.generate_prompt(
         user_question=user_question, data=data
-        )
-
-def get_llm_response_from_generated_prompt(prompt: str): 
-    return get_llm_response.run_generated_prompt(
-        prompt = prompt,
-        model="o4-mini"
     )
 
+
+def get_llm_response_from_generated_prompt(prompt: str):
+    return get_llm_response.run_generated_prompt(
+        prompt=prompt,
+        model="o4-mini"
+    )
 
 
 @chat_bp.route("/", methods=["POST"])
 def handler():
     try:
         event = request.get_json()
-        prompt = generate(event)
+        prompt, metadata = generate(event)
         llm_response: str = get_llm_response_from_generated_prompt(prompt)
-        response = {"message": llm_response}
+        response = {
+            "message": llm_response,
+            "metadata": metadata}
         return jsonify(response), 200
     except BaseAppException as e:
         return jsonify({"error": e.message}), 400
     except Exception as e:
-        return jsonify({"error": "Unexpected server error"}), 400
+        return jsonify({"error": f"{str(e)}"}), 400
+
 
 @chat_bp.route("/stream", methods=["POST"])
 def stream():
     try:
         event = request.get_json()
-        prompt = generate(event)
-        def stream_response():
-            yield from get_llm_response.stream_llm_response_from_generated_prompt(prompt)
-        return Response(stream_response(), content_type='text/event-stream')
+        prompt, meta_data = generate(event)
+
+        def stream_response(metadata):
+            yield json.dumps({"metadata": metadata})
+            for chunk in get_llm_response.stream_llm_response_from_generated_prompt(prompt):
+                payload = json.dumps({"data": chunk})
+                yield payload
+
+        return Response(stream_response(meta_data), content_type='text/event-stream')
     except BaseAppException as e:
         return jsonify({"error": e.message}), 400
     except Exception as e:
         return jsonify({"error": "Unexpected server error"}), 400
+
 
 def generate(event):
     request_id = uuid.uuid4().hex
@@ -107,4 +120,4 @@ def generate(event):
         vector=vector
     )
     prompt: str = run_prompt(user_question, data)
-    return prompt
+    return prompt, [datum.metadata for datum in data]

@@ -1,13 +1,21 @@
 from google.auth import default
 import vertexai
 from vertexai.language_models import TextEmbeddingInput, TextEmbeddingModel
-from sentence_transformers import SentenceTransformer
-from shared.enums import EmbeddingConfiguration 
+from shared.enums import EmbeddingConfiguration
 
-bert_small_model = SentenceTransformer("all-MiniLM-L6-v2")
+_bert_small_model = None
+
 def bert_small(text_data: str) -> list[float]:
-    embedding: list[float] = []
-    vector: list[float] = bert_small_model.encode(text_data).tolist()
+    global _bert_small_model
+    if _bert_small_model is None:
+        try:
+            from sentence_transformers import SentenceTransformer
+        except ModuleNotFoundError:
+            raise ImportError(
+                "sentence-transformers is required for BERT_SMALL embedding but is not installed."
+            )
+        _bert_small_model = SentenceTransformer("all-MiniLM-L6-v2")
+    vector = _bert_small_model.encode(text_data).tolist()
     return vector
 
 def gemini_embedding(text_data: str) -> list[float]:
