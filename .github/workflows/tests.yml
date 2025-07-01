@@ -10,8 +10,23 @@ jobs:
   test:
     runs-on: ubuntu-latest
 
+    env:
+      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+      SBERT_API_URL: ${{ secrets.SBERT_API_URL }}
+      MONGODB_URI: ${{ secrets.MONGODB_URI }}
+      MONGODB_DB: ${{ secrets.MONGODB_DB }}
+      MONGODB_VECTOR_COLLECTION: ${{ secrets.MONGODB_VECTOR_COLLECTION }}
+      COLLECTION_INDEX: ${{ secrets.COLLECTION_INDEX }}
+      GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+      GOOGLE_CLOUD_PROJECT_ID: ${{ secrets.GOOGLE_CLOUD_PROJECT_ID }}
+      GOOGLE_APPLICATION_CREDENTIALS: ${{ github.workspace }}/gcloud-key.json
+
     steps:
       - uses: actions/checkout@v4
+
+      - name: Write Google credentials file
+        run: |
+          echo "${{ secrets.GCLOUD_KEY_JSON_B64 }}" | base64 --decode > ${{ github.workspace }}/gcloud-key.json
 
       - name: Set PYTHONPATH
         run: echo "PYTHONPATH=$(pwd)" >> $GITHUB_ENV
