@@ -1,5 +1,6 @@
 from dotenv import load_dotenv
 import os
+
 load_dotenv()
 
 
@@ -10,9 +11,12 @@ VECTOR_PATH = "vector"
 
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 SBERT_API_URL = os.getenv("SBERT_API_URL")
+
 MONGODB_URI = os.getenv("MONGODB_URI")
-MONGODB_DB_NAME= os.getenv("MONGODB_DB")
+MONGODB_DB_NAME = os.getenv("MONGODB_DB")
 MONGODB_VECTOR_COLLECTION = os.getenv("MONGODB_VECTOR_COLLECTION")
+
+
 COLLECTION_INDEX = os.getenv("COLLECTION_INDEX")
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 GOOGLE_CLOUD_PROJECT_ID = os.getenv("GOOGLE_CLOUD_PROJECT_ID")

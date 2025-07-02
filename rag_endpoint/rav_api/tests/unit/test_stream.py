@@ -1,15 +1,15 @@
 import pytest
 import json
 from flask import Flask
-from rag_endpoint.rav_api.rav_endpoint.main import chat_bp
+from rag_endpoint.rav_api.app import create_app
 
-endpoint = "/chat/stream"
+endpoint = "api/chat/stream"
 
 
 @pytest.fixture
 def app():
-    app = Flask(__name__)
-    app.register_blueprint(chat_bp, url_prefix="/chat")
+    app = create_app()
+    app.config["TESTING"] = True
     return app
 
 
@@ -21,7 +21,7 @@ def client(app):
 def test_chat_stream(client):
     request_body = {"question": "Why did Moshe sacrifice his family life?"}
     response = client.post(
-        "/chat/stream", data=json.dumps(request_body), content_type="application/json"
+        endpoint, data=json.dumps(request_body), content_type="application/json"
     )
     assert response.status_code == 200
 

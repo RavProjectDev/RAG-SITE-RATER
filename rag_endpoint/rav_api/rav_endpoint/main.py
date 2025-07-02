@@ -1,42 +1,18 @@
 import json
 import uuid
 
-from flask import Blueprint, jsonify, request, Response
+from flask import Blueprint, jsonify, request, Response, current_app
 
 from rag_endpoint.rav_api.rav_endpoint.classes import Document
 from rag_endpoint.rav_api.rav_endpoint.exceptions import BaseAppException
 from rag_endpoint.rav_api.rav_endpoint.llm import prompt_manager, get_llm_response
 from rag_endpoint.rav_api.rav_endpoint.pre_process import pre_process
 from rag_endpoint.rav_api.rav_endpoint.util import verify
-from shared.constants import (
-    MONGODB_URI,
-    MONGODB_DB_NAME,
-    MONGODB_VECTOR_COLLECTION,
-    COLLECTION_INDEX,
-)
-from shared.db.mongodb_connection import MongoConnection, Connection
+
 from shared.embedding.embed import embed
+from shared.db.mongodb_connection import Connection
 from shared.enums import EmbeddingConfiguration
 
-assert MONGODB_URI is not None, "MONGODB_URI environment variable is not set"
-assert MONGODB_DB_NAME is not None, "MONGODB_DB_NAME environment variable is not set"
-assert (
-    MONGODB_VECTOR_COLLECTION is not None
-), "MONGODB_VECTOR_COLLECTION environment variable is not set"
-assert COLLECTION_INDEX is not None, "COLLECTION_INDEX environment variable is not set"
-
-connection: Connection = MongoConnection(
-    uri=MONGODB_URI,
-    collection_name=MONGODB_VECTOR_COLLECTION,
-    index=COLLECTION_INDEX,
-    db_name=MONGODB_DB_NAME,
-)
-embedding_configuration = EmbeddingConfiguration.GEMINI
-
-import logging
-
-logger = logging.getLogger()
-logger.setLevel(logging.INFO)
 
 chat_bp = Blueprint("chat", __name__)
 
@@ -71,6 +47,7 @@ def get_llm_response_from_generated_prompt(prompt: str):
 
 @chat_bp.route("/", methods=["POST"])
 def handler():
+
     try:
         event = request.get_json()
         prompt, metadata = generate(event)
@@ -106,9 +83,9 @@ def stream():
 
 def generate(event):
     request_id = uuid.uuid4().hex
-    logger.info(f"[{request_id}] Received event: {event}")
     result, data_message = verify(event)
-
+    embedding_configuration = current_app.config["EMBEDDING_CONFIGURATION"]
+    connection = current_app.config["CONNECTION"]
     if not result:
         raise BaseAppException(f"Invalid event: {event}")
 

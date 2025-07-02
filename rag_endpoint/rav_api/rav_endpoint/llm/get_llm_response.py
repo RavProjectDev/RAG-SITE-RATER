@@ -1,22 +1,40 @@
 from typing import Union
 from openai import OpenAI
-from openai.types.chat import ChatCompletionUserMessageParam, ChatCompletionSystemMessageParam
+from openai.types.chat import (
+    ChatCompletionUserMessageParam,
+    ChatCompletionSystemMessageParam,
+)
 
-from shared.logger_config import timing_decorator,llm_logger
+from flask import current_app
+
 from shared import constants
+from shared.logging.classes import AbstractLogger, LogType
+from shared.logging.mongo import MongoLogger
+from shared.logging.schemas import LLMCostLog
+
+from shared.logging.utils import timing_context
 
 key = constants.OPENAI_API_KEY
 client = OpenAI(api_key=key)
 
-@timing_decorator(llm_logger)
+
+def get_logger() -> AbstractLogger:
+    return MongoLogger(
+        ds=current_app.config["LOGGING_DATA_SOURCE"], collection_name="llm"
+    )
+
+
 def run_generated_prompt(prompt: str, model: str = "gpt-4") -> str:
     try:
-        llm_logger.info("Running OpenAI completion with model: %s", model)
-        llm_logger.debug("Prompt: %s", prompt)
-
-        messages: list[Union[ChatCompletionSystemMessageParam, ChatCompletionUserMessageParam]] = [
-            ChatCompletionSystemMessageParam(role="system", content="You are a helpful assistant knowledgeable in Rav Soloveitchik's teachings."),
-            ChatCompletionUserMessageParam(role="user", content=prompt)
+        logger = get_logger()
+        messages: list[
+            Union[ChatCompletionSystemMessageParam, ChatCompletionUserMessageParam]
+        ] = [
+            ChatCompletionSystemMessageParam(
+                role="system",
+                content="You are a helpful assistant knowledgeable in Rav Soloveitchik's teachings.",
+            ),
+            ChatCompletionUserMessageParam(role="user", content=prompt),
         ]
 
         response = client.chat.completions.create(
@@ -29,27 +47,34 @@ def run_generated_prompt(prompt: str, model: str = "gpt-4") -> str:
         completion_tokens = usage.completion_tokens
         total_tokens = usage.total_tokens
 
-        llm_logger.info(f"Tokens used — prompt: {prompt_tokens}, completion: {completion_tokens}, total: {total_tokens}")
+        data = LLMCostLog(
+            prompt_tokens=prompt_tokens,
+            completion_tokens=completion_tokens,
+            total_tokens=total_tokens,
+        )
+        logger.log(log_type=LogType.LLM_COST, fields=data)
 
-        result = response.choices[0].message.content 
+        result = response.choices[0].message.content
         if not result:
             return "Error: Received null response from OpenAI"
-    
+
         return result
     except Exception as e:
-        llm_logger.error("Error during OpenAI completion: %s", e)
         return f"Error: {e}"
 
+
 def stream_llm_response_from_generated_prompt(prompt: str, model: str = "gpt-4"):
-    messages: list[Union[ChatCompletionSystemMessageParam, ChatCompletionUserMessageParam]] = [
-        ChatCompletionSystemMessageParam(role="system",
-                                         content="You are a helpful assistant knowledgeable in Rav Soloveitchik's teachings."),
-        ChatCompletionUserMessageParam(role="user", content=prompt)
+    messages: list[
+        Union[ChatCompletionSystemMessageParam, ChatCompletionUserMessageParam]
+    ] = [
+        ChatCompletionSystemMessageParam(
+            role="system",
+            content="You are a helpful assistant knowledgeable in Rav Soloveitchik's teachings.",
+        ),
+        ChatCompletionUserMessageParam(role="user", content=prompt),
     ]
     response = client.chat.completions.create(
-        model=model,
-        messages=messages,
-        stream = True
+        model=model, messages=messages, stream=True
     )
 
     for chunk in response:
@@ -57,5 +82,3 @@ def stream_llm_response_from_generated_prompt(prompt: str, model: str = "gpt-4")
         if delta and delta.content:
             yield f"{delta.content}"
     yield "data: [DONE]\n\n"
-
-
