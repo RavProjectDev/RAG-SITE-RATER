@@ -42,7 +42,7 @@ def run_prompt(user_question: str, data: list[Document]) -> str:
 
 
 def get_llm_response_from_generated_prompt(prompt: str):
-    return get_llm_response.run_generated_prompt(prompt=prompt, model="o4-mini")
+    return get_llm_response.run_generated_prompt(prompt=prompt)
 
 
 @chat_bp.route("/", methods=["POST"])
