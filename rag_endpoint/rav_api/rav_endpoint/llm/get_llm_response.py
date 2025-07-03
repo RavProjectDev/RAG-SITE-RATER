@@ -42,17 +42,17 @@ def run_generated_prompt(prompt: str, model: LLMModel = LLMModel.GPT_4) -> str:
             model=model.value,
             messages=messages,
         )
-
         usage = response.usage
         prompt_tokens = usage.prompt_tokens
         completion_tokens = usage.completion_tokens
         total_tokens = usage.total_tokens
-
+        used_model = response.model
         data = LLMCostLog(
             prompt_tokens=prompt_tokens,
             completion_tokens=completion_tokens,
             total_tokens=total_tokens,
-            model=model,
+            model=used_model,
+            input_model=model,
         )
         logger.log(log_type=LogType.LLM_COST, fields=data)
 

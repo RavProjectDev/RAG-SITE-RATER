@@ -30,4 +30,5 @@ class LLMCostLog(Logmodel):
     prompt_tokens: int
     completion_tokens: int
     total_tokens: int
-    model: LLMModel
+    input_model: LLMModel
+    model: str
