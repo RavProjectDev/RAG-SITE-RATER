@@ -24,6 +24,6 @@ class MongoLogger(AbstractLogger):
         log_entry = {
             "timestamp": datetime.now(timezone.utc),
             "log_type": log_type.value,
-            **fields.model_dump(),
+            **fields.model_dump(mode="json"),
         }
         self.data_source.write_log(log_entry, self.collection)
