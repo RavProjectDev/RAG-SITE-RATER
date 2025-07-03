@@ -8,6 +8,7 @@ from openai.types.chat import (
 from flask import current_app
 
 from shared import constants
+from shared.enums import LLMModel
 from shared.logging.classes import AbstractLogger, LogType
 from shared.logging.mongo import MongoLogger
 from shared.logging.schemas import LLMCostLog
@@ -24,7 +25,7 @@ def get_logger() -> AbstractLogger:
     )
 
 
-def run_generated_prompt(prompt: str, model: str = "gpt-4") -> str:
+def run_generated_prompt(prompt: str, model: LLMModel = LLMModel.GPT_4) -> str:
     try:
         logger = get_logger()
         messages: list[
@@ -38,7 +39,7 @@ def run_generated_prompt(prompt: str, model: str = "gpt-4") -> str:
         ]
 
         response = client.chat.completions.create(
-            model=model,
+            model=model.value,
             messages=messages,
         )
 
@@ -51,6 +52,7 @@ def run_generated_prompt(prompt: str, model: str = "gpt-4") -> str:
             prompt_tokens=prompt_tokens,
             completion_tokens=completion_tokens,
             total_tokens=total_tokens,
+            model=model,
         )
         logger.log(log_type=LogType.LLM_COST, fields=data)
 

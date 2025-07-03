@@ -1,5 +1,7 @@
 from pydantic import BaseModel
 
+from shared.enums import LLMModel
+
 
 class Logmodel(BaseModel):
     pass
@@ -28,3 +30,4 @@ class LLMCostLog(Logmodel):
     prompt_tokens: int
     completion_tokens: int
     total_tokens: int
+    model: LLMModel

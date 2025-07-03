@@ -1,15 +1,19 @@
 from enum import Enum, auto
 
+
 class DataSourceConfiguration(Enum):
     LOCAL = auto()
+
 
 class TypeOfFormat(Enum):
     SRT = auto()
     TXT = auto()
 
+
 class DataBaseConfiguration(Enum):
     PINECONE = auto()
     MONGO = auto()
+
 
 class EmbeddingConfiguration(Enum):
     BERT_SMALL = "all-MiniLM-L6-v2"
@@ -17,4 +21,5 @@ class EmbeddingConfiguration(Enum):
     GEMINI = "embedding-001"
 
 
-
+class LLMModel(Enum):
+    GPT_4 = "gpt-4"
