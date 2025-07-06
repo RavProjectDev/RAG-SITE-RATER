@@ -22,4 +22,4 @@ class EmbeddingConfiguration(Enum):
 
 
 class LLMModel(Enum):
-    GPT_4 = "gpt-4"
+    GPT_4 = "o4-mini"
