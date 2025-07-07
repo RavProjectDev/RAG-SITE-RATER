@@ -2,7 +2,11 @@ import json
 from datetime import datetime
 
 from rav_api.rav_endpoint.classes import Document
-from rav_api.rav_endpoint.main import process_user_question, generate_embedding, retrieve_documents
+from rav_api.rav_endpoint.main import (
+    process_user_question,
+    generate_embedding,
+    retrieve_documents,
+)
 
 
 def parse_srt_timestamp(ts: str) -> float:
@@ -24,7 +28,9 @@ def merge_intervals(intervals: list[tuple[float, float]]) -> list[tuple[float, f
     return merged
 
 
-def compute_total_overlap(expected: list[tuple[float, float]], outputted: list[tuple[float, float]]) -> float:
+def compute_total_overlap(
+    expected: list[tuple[float, float]], outputted: list[tuple[float, float]]
+) -> float:
     total = 0.0
     for e_start, e_end in expected:
         for o_start, o_end in outputted:
@@ -35,9 +41,13 @@ def compute_total_overlap(expected: list[tuple[float, float]], outputted: list[t
     return total
 
 
-def compare_time_stamps(expected_time_stamps: list[tuple[str, str, str]],
-                        outputted_time_stamps: list[tuple[str, str, str]]) -> None:
-    def group_by_namespace(timestamps: list[tuple[str, str, str]]) -> dict[str, list[tuple[float, float]]]:
+def compare_time_stamps(
+    expected_time_stamps: list[tuple[str, str, str]],
+    outputted_time_stamps: list[tuple[str, str, str]],
+) -> None:
+    def group_by_namespace(
+        timestamps: list[tuple[str, str, str]]
+    ) -> dict[str, list[tuple[float, float]]]:
         grouped = {}
         for ns, start, end in timestamps:
             if not start or not end:
@@ -66,11 +76,15 @@ def compare_time_stamps(expected_time_stamps: list[tuple[str, str, str]],
 
         print(
             f"[{namespace}] Coverage: {ns_overlap:.2f}s / {ns_expected_duration:.2f}s = "
-            f"{ns_overlap / ns_expected_duration:.2%}" if ns_expected_duration else f"[{namespace}] No expected duration"
+            f"{ns_overlap / ns_expected_duration:.2%}"
+            if ns_expected_duration
+            else f"[{namespace}] No expected duration"
         )
 
     overall_coverage = total_matched / total_expected if total_expected else 0
-    print(f"\nOverall coverage: {total_matched:.2f}s / {total_expected:.2f}s = {overall_coverage:.2%}")
+    print(
+        f"\nOverall coverage: {total_matched:.2f}s / {total_expected:.2f}s = {overall_coverage:.2%}"
+    )
 
 
 class ChunkRetrievalEvaluator:
@@ -93,7 +107,7 @@ class ChunkRetrievalEvaluator:
                 (
                     doc.metadata.get("namespace", ""),
                     doc.metadata.get("start", ""),
-                    doc.metadata.get("end", "")
+                    doc.metadata.get("end", ""),
                 )
                 for doc in documents
             ]

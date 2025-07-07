@@ -1,6 +1,8 @@
 from pathlib import Path
 from logging import getLogger
+
 logger = getLogger(__name__)
+
 
 def get_transcripts_from_local() -> list[tuple[str, str]]:
     """
@@ -11,7 +13,7 @@ def get_transcripts_from_local() -> list[tuple[str, str]]:
     """
     data_dir = Path(__file__).resolve().parent.parent / "data/transcripts"
     logger.info(f"Looking for transcript files in: {data_dir}")
-    
+
     srt_files = list(data_dir.glob("*.srt"))
     logger.info(f"Found {len(srt_files)} SRT files")
 
@@ -22,7 +24,9 @@ def get_transcripts_from_local() -> list[tuple[str, str]]:
             with open(srt_file, encoding="utf-8") as f:
                 content = f.read()
                 transcripts.append((srt_file.stem, content))
-                logger.debug(f"Successfully loaded {srt_file.name} ({len(content)} characters)")
+                logger.debug(
+                    f"Successfully loaded {srt_file.name} ({len(content)} characters)"
+                )
         except Exception as e:
             logger.error(f"Failed to load transcript file {srt_file.name}: {str(e)}")
             raise

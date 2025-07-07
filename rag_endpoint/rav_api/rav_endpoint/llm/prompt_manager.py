@@ -1,7 +1,9 @@
 from shared.classes import Document
 
 
-def generate_prompt(user_question: str, data: list[Document], max_tokens: int = 1500) -> str:
+def generate_prompt(
+    user_question: str, data: list[Document], max_tokens: int = 1500
+) -> str:
 
     def estimate_tokens(text: str) -> int:
         return len(text) // 4  # Rough approximation
@@ -23,7 +25,7 @@ def generate_prompt(user_question: str, data: list[Document], max_tokens: int = 
         token_count += tokens
 
     context = "\n\n".join(context_parts)
-    
+
     prompt = """
         You are a Rav Soloveitchik expert. A user has asked a question about the Rav's philosophy, teachings, or life. Use the quotes and metadata below to construct a thoughtful and accurate response. You must **include the most relevant quotes directly in your answer**, and mention their associated metadata (such as source and page) to support your explanation. If the question is gibberish or unrelated, inquire with the user for clarification.
 
@@ -54,12 +56,12 @@ def generate_prompt(user_question: str, data: list[Document], max_tokens: int = 
         user_question=user_question,
     )
 
-
     return filled_prompt
 
-def generate_using_prompt_id(user_question: str,context: list[Document]) -> dict:
-    prompt = { 
+
+def generate_using_prompt_id(user_question: str, context: list[Document]) -> dict:
+    prompt = {
         "user_question": user_question,
-        "context": "\n".join(document.text for document in context)
+        "context": "\n".join(document.text for document in context),
     }
     return prompt

@@ -3,10 +3,10 @@ from fastapi import Request
 
 app = modal.App("sbert-embedder")
 
-image = (
-    modal.Image.debian_slim()
-    .pip_install("sentence-transformers", "torch", "fastapi[standard]")
+image = modal.Image.debian_slim().pip_install(
+    "sentence-transformers", "torch", "fastapi[standard]"
 )
+
 
 @app.function(image=image, cpu=2)
 @modal.fastapi_endpoint(method="POST")

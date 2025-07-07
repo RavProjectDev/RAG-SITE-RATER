@@ -1,7 +1,9 @@
 from shared.classes import VectorEmbedding
 from shared.db.connection import Connection
 from logging import getLogger
+
 logger = getLogger(__name__)
+
 
 def insert_to_db(
     connection: Connection,
@@ -16,12 +18,14 @@ def insert_to_db(
     :return:
     """
     logger.info(f"Starting database insertion of {len(embeddings)} embeddings")
-    
+
     try:
         with connection:
             logger.info("Database connection established, inserting embeddings...")
             connection.insert(embeddings)
-            logger.info(f"Successfully inserted {len(embeddings)} embeddings into database")
+            logger.info(
+                f"Successfully inserted {len(embeddings)} embeddings into database"
+            )
     except Exception as e:
         logger.error(f"Failed to insert embeddings into database: {str(e)}")
         raise

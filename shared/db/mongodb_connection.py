@@ -28,13 +28,14 @@ class MongoConnection(Connection):
 
             existing = self.collection.find(
                 {"metadata.name_space": {"$in": namespaces_to_insert}},
-                {"metadata.name_space": 1}
+                {"metadata.name_space": 1},
             )
             existing_namespaces = {doc["metadata"]["name_space"] for doc in existing}
 
             # Step 3: Filter out embeddings with already-existing namespaces
             embeddings_to_insert = [
-                emb for emb in embedded_data
+                emb
+                for emb in embedded_data
                 if emb.data.name_space not in existing_namespaces
             ]
 
