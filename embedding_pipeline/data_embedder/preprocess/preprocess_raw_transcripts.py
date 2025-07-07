@@ -4,8 +4,8 @@ import uuid
 from shared.classes import Chunk
 from shared.constants import CHUNKING_SIZE
 from shared.enums import TypeOfFormat
-from shared.logger_config import preprocess_logger, timing_decorator
-
+from logging import getLogger
+logger = getLogger(__name__)
 
 def build_chunk(subs, word_count, full_srt_text, search_start,name_space) -> tuple[Chunk, int]:
     """
@@ -39,9 +39,9 @@ def build_chunk(subs, word_count, full_srt_text, search_start,name_space) -> tup
 
 def chunk_srt(content: tuple[str,str]) -> list[Chunk]:
     file_name, text = content
-    preprocess_logger.debug(f"Chunking SRT file: {file_name}")
+    logger.debug(f"Chunking SRT file: {file_name}")
     subs = pysrt.from_string(text)
-    preprocess_logger.debug(f"Parsed {len(subs)} subtitle segments from {file_name}")
+    logger.debug(f"Parsed {len(subs)} subtitle segments from {file_name}")
     
     chunks = []
     current_chunk = []
@@ -63,7 +63,7 @@ def chunk_srt(content: tuple[str,str]) -> list[Chunk]:
         chunk, _ = build_chunk(current_chunk, word_count, text, search_index,file_name)
         chunks.append(chunk)
 
-    preprocess_logger.debug(f"Created {len(chunks)} chunks from {file_name}")
+    logger.debug(f"Created {len(chunks)} chunks from {file_name}")
     return chunks
 
 
@@ -76,9 +76,9 @@ def chunk_txt(content: tuple[str, str]) -> list[Chunk]:
     """
 
     file_name, text = content
-    preprocess_logger.debug(f"Chunking TXT file: {file_name}")
+    logger.debug(f"Chunking TXT file: {file_name}")
     words = text.split()
-    preprocess_logger.debug(f"Found {len(words)} words in {file_name}")
+    logger.debug(f"Found {len(words)} words in {file_name}")
     
     chunks: list[Chunk] = []
 
@@ -105,9 +105,8 @@ def chunk_txt(content: tuple[str, str]) -> list[Chunk]:
         chunks.append(chunk)
         char_idx = end_idx  # move past this chunk
 
-    preprocess_logger.debug(f"Created {len(chunks)} chunks from {file_name}")
+    logger.debug(f"Created {len(chunks)} chunks from {file_name}")
     return chunks
-@timing_decorator(preprocess_logger)
 def run(raw_transcripts: list[tuple[str, str]],data_format: TypeOfFormat) -> list[Chunk]:
     """
     Processes raw transcripts by applying preprocessing steps, including:
@@ -119,12 +118,12 @@ def run(raw_transcripts: list[tuple[str, str]],data_format: TypeOfFormat) -> lis
     :param data_format: Format of the data (e.g., SRT or TXT)
     :return: List of Chunk objects
     """
-    preprocess_logger.info(f"Starting preprocessing of {len(raw_transcripts)} transcripts with format: {data_format.name}")
+    logger.info(f"Starting preprocessing of {len(raw_transcripts)} transcripts with format: {data_format.name}")
     cleaned_transcripts: list[Chunk] = []
     
     for i, raw_transcript in enumerate(raw_transcripts, 1):
         file_name = raw_transcript[0]
-        preprocess_logger.info(f"Processing transcript {i}/{len(raw_transcripts)}: {file_name}")
+        logger.info(f"Processing transcript {i}/{len(raw_transcripts)}: {file_name}")
         
         chunks: list[Chunk]
         if data_format.value == TypeOfFormat.SRT.value:
@@ -132,38 +131,37 @@ def run(raw_transcripts: list[tuple[str, str]],data_format: TypeOfFormat) -> lis
         elif data_format.value == TypeOfFormat.TXT.value:
             chunks = chunk_txt(raw_transcript)
         else:
-            preprocess_logger.error(f"Unsupported format: {data_format}")
+            logger.error(f"Unsupported format: {data_format}")
             raise ValueError(f"Unsupported format: {data_format}")
         
         cleaned_transcripts.extend(chunks)
-        preprocess_logger.info(f"Completed processing {file_name}: {len(chunks)} chunks")
+        logger.info(f"Completed processing {file_name}: {len(chunks)} chunks")
 
-    preprocess_logger.info(f"Preprocessing completed. Total chunks created: {len(cleaned_transcripts)}")
+    logger.info(f"Preprocessing completed. Total chunks created: {len(cleaned_transcripts)}")
     return cleaned_transcripts
 
-@timing_decorator(preprocess_logger)
 def translate_chunks(chunks: list[Chunk]) -> list[tuple[str, Chunk]]:
-    preprocess_logger.info(f"Starting translation of {len(chunks)} chunks")
+    logger.info(f"Starting translation of {len(chunks)} chunks")
     
     try:
         with open('/Users/dothanbardichev/Desktop/RAV/RavProject/embed/data_embedder/data/translations/assigned.json', 'r') as f:
             translations = json.load(f)
-        preprocess_logger.debug(f"Loaded {len(translations)} translation mappings")
+        logger.debug(f"Loaded {len(translations)} translation mappings")
     except Exception as e:
-        preprocess_logger.error(f"Failed to load translation file: {str(e)}")
+        logger.error(f"Failed to load translation file: {str(e)}")
         raise
 
     result: list[tuple[str, Chunk]] = []
     for i, chunk in enumerate(chunks, 1):
         if i % 100 == 0:  # Log progress every 100 chunks
-            preprocess_logger.debug(f"Translated {i}/{len(chunks)} chunks")
+            logger.debug(f"Translated {i}/{len(chunks)} chunks")
         
         words = chunk.text.lower().split()
         translated_words = [translations.get(word, word) for word in words]
         mapped_text = " ".join(translated_words)
         result.append((mapped_text, chunk))
 
-    preprocess_logger.info(f"Translation completed for {len(result)} chunks")
+    logger.info(f"Translation completed for {len(result)} chunks")
     return result
 
 
