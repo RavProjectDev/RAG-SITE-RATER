@@ -1,8 +1,7 @@
 import argparse
-import os
 
-from shared.db.mongodb_connection import MongoConnection
-from shared.db.connection import Connection
+from rag.app.db.mongodb_connection import MongoConnection
+from rag.app.db.connection import Connection
 from shared.enums import DataSourceConfiguration, TypeOfFormat, EmbeddingConfiguration
 from embedding_pipeline.data_embedder.datastore.data_handler import get_data
 from preprocess.preprocess_raw_transcripts import run as preprocess_raw_transcripts
