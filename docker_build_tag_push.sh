@@ -2,12 +2,12 @@
 
 set -e
 
-IMAGE_NAME=rav_endpoint
-REMOTE_IMAGE=ravprojectdev/rav_endpoint:latest
+IMAGE_NAME=rag
+REMOTE_IMAGE=ravprojectdev/rag:latest
 
 echo "Building Docker image..."
 docker build \
-  -f rag_endpoint/Dockerfile \
+  -f rag/Dockerfile \
   -t ${IMAGE_NAME} \
   . \
   --platform linux/amd64
