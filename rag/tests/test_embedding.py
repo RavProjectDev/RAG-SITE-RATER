@@ -5,6 +5,7 @@ from rag.app.services.embedding import generate_embedding
 from rag.app.schemas.data import EmbeddingConfiguration
 
 
+# test
 def test_generate_embedding_bert(monkeypatch):
     monkeypatch.setattr(
         "rag.app.services.embedding.bert_small", lambda text: [1.0, 2.0, 3.0]
