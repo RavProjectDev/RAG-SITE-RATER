@@ -60,7 +60,6 @@ jobs:
             -e VERTEX_REGION="northamerica-northeast1" \
             -v ${{ github.workspace }}/gcloud-key.json:/workspace/gcloud-key.json \
             rag pytest rag/tests
-            rag pytest
 
       - name: Tag Docker image
         run: |
