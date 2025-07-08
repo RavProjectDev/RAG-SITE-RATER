@@ -1,4 +1,6 @@
 import json
+
+
 def verify(event) -> tuple[bool, str]:
     try:
         question = event.get("question")

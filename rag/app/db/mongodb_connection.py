@@ -5,9 +5,10 @@ from rag.app.schemas.data import Document, VectorEmbedding
 from rag.app.db.connection import Connection
 
 
-
 class MongoConnection(Connection):
-    def __init__(self, uri: str, db_name: str, collection_name: str, index: str, vector_path: str):
+    def __init__(
+        self, uri: str, db_name: str, collection_name: str, index: str, vector_path: str
+    ):
         try:
             self.vector_path = vector_path
             self.client = MongoClient(uri, tlsCAFile=certifi.where())

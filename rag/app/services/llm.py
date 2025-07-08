@@ -4,14 +4,11 @@ from openai.types.chat import (
     ChatCompletionUserMessageParam,
     ChatCompletionSystemMessageParam,
 )
-from rag.app.schemas.data import LLMModel,Document
+from rag.app.schemas.data import LLMModel, Document
 from rag.app.core.config import settings
 
 key = settings.openai_api_key
 client = OpenAI(api_key=key)
-
-
-
 
 
 def get_llm_response(prompt: str, model: LLMModel = LLMModel.GPT_4) -> str:
@@ -64,7 +61,6 @@ def stream_llm_response(prompt: str, model: str = "gpt-4"):
         if delta and delta.content:
             yield f"{delta.content}"
     yield "data: [DONE]\n\n"
-
 
 
 def generate_prompt(
@@ -123,5 +119,3 @@ def generate_prompt(
     )
 
     return filled_prompt
-
-

@@ -5,6 +5,7 @@ from rag.app.schemas.data import EmbeddingConfiguration, Embedding
 from functools import lru_cache
 from rag.app.core.config import settings
 
+
 @lru_cache()
 def load_bert_model():
     try:
@@ -40,6 +41,8 @@ def generate_embedding(text: str, configuration: EmbeddingConfiguration) -> Embe
         vector = bert_small(text)
     elif configuration == EmbeddingConfiguration.GEMINI:
         vector = gemini_embedding(text)
+    elif configuration is None:
+        raise RuntimeError(f"Unknown configuration")
     else:
         raise ValueError(f"Unsupported embedding configuration: {configuration.name}")
 

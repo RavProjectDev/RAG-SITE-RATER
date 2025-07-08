@@ -18,8 +18,6 @@ class Chunk(BaseModel):
 
     text: str
     chunk_size: int
-    char_start: int
-    char_end: int
     time_start: Optional[str] = None
     time_end: Optional[str] = None
     name_space: str

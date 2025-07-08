@@ -5,7 +5,7 @@ import json
 
 from rag.app.services.auth import verify
 from rag.app.services.llm import stream_llm_response, generate_prompt, get_llm_response
-from rag.app.services.preprocess import pre_process_user_query
+from rag.app.services.preprocess.user_input import pre_process_user_query
 from rag.app.services.embedding import generate_embedding
 from rag.app.exceptions import BaseAppException
 from rag.app.schemas.data import Document
@@ -13,6 +13,7 @@ from rag.app.core.config import settings
 from rag.app.db.connection import Connection
 
 router = APIRouter()
+
 
 @router.post("/")
 async def handler(request: Request):
@@ -57,7 +58,9 @@ async def generate(event, request: Request):
     embedding_configuration = settings.embedding_configuration
     connection: Connection = request.app.state.mongo_conn
 
-    vector: list[float] = generate_embedding(user_question, embedding_configuration).vector
+    vector: list[float] = generate_embedding(
+        user_question, embedding_configuration
+    ).vector
     data: list[Document] = connection.retrieve(vector)
     prompt: str = generate_prompt(user_question, data)
 
