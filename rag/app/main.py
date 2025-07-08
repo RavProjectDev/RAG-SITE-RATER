@@ -9,6 +9,11 @@ from contextlib import asynccontextmanager
 from rag.app.db.connection import Connection
 from rag.app.db.mongodb_connection import MongoConnection
 from rag.app.core.config import settings
+from fastapi import Request
+import logging
+import os
+
+ENV = os.getenv("APP_ENV", "production")
 
 
 @asynccontextmanager

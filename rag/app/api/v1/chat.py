@@ -2,6 +2,7 @@ import uuid
 from fastapi import APIRouter, Request, HTTPException
 from fastapi.responses import JSONResponse, StreamingResponse
 import json
+import asyncio
 
 from rag.app.services.auth import verify
 from rag.app.services.llm import stream_llm_response, generate_prompt, get_llm_response
@@ -17,12 +18,26 @@ router = APIRouter()
 
 @router.post("/")
 async def handler(request: Request):
+    event = None
     try:
+        # ✅ Moved outside inner logic to ensure event is available in except blocks
         event = await request.json()
-        prompt, metadata = await generate(event, request)
-        llm_response: str = get_llm_response(prompt)
-        response = {"message": llm_response, "metadata": metadata}
-        return JSONResponse(content=response, status_code=200)
+
+        async def inner_logic():
+            prompt, metadata = await generate(event, request)
+            llm_response = get_llm_response(prompt)
+            response = {"message": llm_response, "metadata": metadata}
+            return JSONResponse(content=response, status_code=200)
+
+        return await asyncio.wait_for(
+            inner_logic(), timeout=settings.external_api_timeout
+        )
+
+    except asyncio.TimeoutError:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Request timed out after {settings.external_api_timeout} seconds.",
+        )
     except BaseAppException as e:
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
@@ -31,17 +46,32 @@ async def handler(request: Request):
 
 @router.post("/stream")
 async def stream(request: Request):
+    event = None
     try:
         event = await request.json()
-        prompt, metadata = await generate(event, request)
 
-        def event_generator():
-            yield f"data: {json.dumps({'metadata': metadata})}\n\n"
-            for chunk in stream_llm_response(prompt):
-                yield f"data: {json.dumps({'data': chunk})}\n\n"
-            yield "data: [DONE]\n\n"
+        async def inner_stream():
+            prompt, metadata = await generate(event, request)
 
-        return StreamingResponse(event_generator(), media_type="text/event-stream")
+            def event_generator():
+                yield f"data: {json.dumps({'metadata': metadata})}\n\n"
+                for chunk in stream_llm_response(prompt):
+                    yield f"data: {json.dumps({'data': chunk})}\n\n"
+                yield "data: [DONE]\n\n"
+
+            return StreamingResponse(event_generator(), media_type="text/event-stream")
+
+        return await asyncio.wait_for(
+            inner_stream(), timeout=settings.external_api_timeout
+        )
+
+    except asyncio.TimeoutError:
+        return JSONResponse(
+            content={
+                "error": f"Streaming request timed out after {settings.external_api_timeout} seconds."
+            },
+            status_code=500,
+        )
     except BaseAppException as e:
         return JSONResponse(content={"error": str(e)}, status_code=400)
     except Exception as e:

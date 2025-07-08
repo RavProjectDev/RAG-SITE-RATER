@@ -31,6 +31,7 @@ def test_chat_handler_success(mock_embed, mock_pre, mock_verify, mock_llm):
     with client as c:
         c.app.state.mongo_conn = mock_conn
         response = c.post("/api/v1/chat/", json={"question": "What is Torah?"})
+        print(response.json())
         assert response.status_code == 200
         assert "message" in response.json()
         assert response.json()["message"] == "mocked LLM response"

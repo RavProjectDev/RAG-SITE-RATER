@@ -17,6 +17,7 @@ class Settings(BaseSettings):
     vector_path: str = "vector"
     vertex_region: str
     chunk_size: int = 100
+    external_api_timeout: int = 60
     model_config = {"env_file": ".env"}
 
 

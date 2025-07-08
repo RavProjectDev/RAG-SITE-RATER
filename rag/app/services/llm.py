@@ -11,7 +11,7 @@ key = settings.openai_api_key
 client = OpenAI(api_key=key)
 
 
-def get_llm_response(prompt: str, model: LLMModel = LLMModel.GPT_4) -> str:
+def get_llm_response(prompt: str, model: LLMModel = LLMModel.GPT_4):
     try:
         messages: list[
             Union[ChatCompletionSystemMessageParam, ChatCompletionUserMessageParam]
@@ -35,11 +35,19 @@ def get_llm_response(prompt: str, model: LLMModel = LLMModel.GPT_4) -> str:
 
         result = response.choices[0].message.content
         if not result:
-            return "Error: Received null response from OpenAI"
+            return "Error: Received null response from OpenAI", None
 
+        metrics = {
+            "log_type": "metrics",
+            "prompt_tokens": prompt_tokens,
+            "completion_tokens": completion_tokens,
+            "total_tokens": total_tokens,
+            "input_model": model.value,
+            "model": used_model,
+        }
         return result
     except Exception as e:
-        return f"Error: {e}"
+        return f"Error: {e}", None
 
 
 def stream_llm_response(prompt: str, model: str = "gpt-4"):
