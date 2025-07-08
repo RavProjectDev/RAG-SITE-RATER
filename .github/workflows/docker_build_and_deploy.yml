@@ -11,17 +11,18 @@ on:
 jobs:
   build-test-deploy:
     runs-on: ubuntu-latest
-
+    
     env:
       OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
       SBERT_API_URL: ${{ secrets.SBERT_API_URL }}
       MONGODB_URI: ${{ secrets.MONGODB_URI }}
-      MONGODB_DB: ${{ secrets.MONGODB_DB }}
+      MONGODB_DB_NAME: "rav_dev"
       MONGODB_VECTOR_COLLECTION: ${{ secrets.MONGODB_VECTOR_COLLECTION }}
       COLLECTION_INDEX: ${{ secrets.COLLECTION_INDEX }}
       GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
       GOOGLE_CLOUD_PROJECT_ID: ${{ secrets.GOOGLE_CLOUD_PROJECT_ID }}
       GOOGLE_APPLICATION_CREDENTIALS: ${{ github.workspace }}/gcloud-key.json
+      VERTEX_REGION: "northamerica-northeast1"
 
     steps:
       - uses: actions/checkout@v4
@@ -50,13 +51,15 @@ jobs:
             -e OPENAI_API_KEY="${{ secrets.OPENAI_API_KEY }}" \
             -e SBERT_API_URL="${{ secrets.SBERT_API_URL }}" \
             -e MONGODB_URI="${{ secrets.MONGODB_URI }}" \
-            -e MONGODB_DB="${{ secrets.MONGODB_DB }}" \
+            -e MONGODB_DB_NAME="rav_dev" \
             -e MONGODB_VECTOR_COLLECTION="${{ secrets.MONGODB_VECTOR_COLLECTION }}" \
             -e COLLECTION_INDEX="${{ secrets.COLLECTION_INDEX }}" \
             -e GEMINI_API_KEY="${{ secrets.GEMINI_API_KEY }}" \
             -e GOOGLE_CLOUD_PROJECT_ID="${{ secrets.GOOGLE_CLOUD_PROJECT_ID }}" \
             -e GOOGLE_APPLICATION_CREDENTIALS="/workspace/gcloud-key.json" \
+            -e VERTEX_REGION="northamerica-northeast1" \
             -v ${{ github.workspace }}/gcloud-key.json:/workspace/gcloud-key.json \
+            rag pytest rag/tests
             rag pytest
 
       - name: Tag Docker image
