@@ -1,19 +1,13 @@
-from pymongo import MongoClient
-from typing import cast
-import certifi
+from typing import cast, Dict, List, Any
 from rag.app.schemas.data import Document, VectorEmbedding
-from rag.app.db.connection import Connection
+from rag.app.db.embeddingconnection import EmbeddingConnection, MetricsConnection
 
 
-class MongoConnection(Connection):
-    def __init__(
-        self, uri: str, db_name: str, collection_name: str, index: str, vector_path: str
-    ):
+class MongoEmbeddingStore(EmbeddingConnection):
+    def __init__(self, collection, index: str, vector_path: str):
         try:
             self.vector_path = vector_path
-            self.client = MongoClient(uri, tlsCAFile=certifi.where())
-            self.db = self.client[db_name]
-            self.collection = self.db[collection_name]
+            self.collection = collection
             self.index = index
         except Exception as e:
             raise
@@ -72,8 +66,14 @@ class MongoConnection(Connection):
         except Exception as e:
             raise
 
-    def close(self):
-        try:
-            self.client.close()
-        except Exception as e:
-            raise
+
+from datetime import datetime
+
+
+class MongoMetricsConnection(MetricsConnection):
+    def __init__(self, collection):
+        self.collection = collection
+
+    def log(self, metric_type: str, data: Dict[str, Any]):
+        doc = {"type": metric_type, "timestamp": datetime.utcnow(), **data}
+        self.collection.insert_one(doc)

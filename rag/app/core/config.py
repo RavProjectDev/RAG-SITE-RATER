@@ -18,6 +18,7 @@ class Settings(BaseSettings):
     vertex_region: str
     chunk_size: int = 100
     external_api_timeout: int = 60
+    metrics_collection: str = "metrics"
     model_config = {"env_file": ".env"}
 
 

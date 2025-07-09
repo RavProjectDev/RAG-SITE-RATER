@@ -1,19 +1,13 @@
 from abc import ABC, abstractmethod
-from typing import List
+from typing import List, Dict, Any
 from rag.app.schemas.data import VectorEmbedding
 
 
-class Connection(ABC):
+class EmbeddingConnection(ABC):
     """
     Abstract class that represents a connection to the database.
     Providing an additional abstraction to connect to the database.
     """
-
-    def __enter__(self):
-        return self
-
-    def __exit__(self, exc_type, exc_value, traceback):
-        self.close()
 
     @abstractmethod
     def insert(self, embedded_data: List[VectorEmbedding]):
@@ -32,6 +26,8 @@ class Connection(ABC):
         """
         pass
 
+
+class MetricsConnection(ABC):
     @abstractmethod
-    def close(self):
+    def log(self, metric_type: str, data: Dict[str, Any]):
         pass

@@ -11,7 +11,7 @@ from rag.app.services.embedding import generate_embedding
 from rag.app.exceptions import BaseAppException
 from rag.app.schemas.data import Document
 from rag.app.core.config import settings
-from rag.app.db.connection import Connection
+from rag.app.db.embeddingconnection import EmbeddingConnection
 
 router = APIRouter()
 
@@ -86,7 +86,7 @@ async def generate(event, request: Request):
 
     user_question: str = pre_process_user_query(data_message)
     embedding_configuration = settings.embedding_configuration
-    connection: Connection = request.app.state.mongo_conn
+    connection: EmbeddingConnection = request.app.state.mongo_conn
 
     vector: list[float] = generate_embedding(
         user_question, embedding_configuration

@@ -1,12 +1,12 @@
 from shared.classes import VectorEmbedding
-from rag.app.db.connection import Connection
+from rag.app.db.embeddingconnection import EmbeddingConnection
 from logging import getLogger
 
 logger = getLogger(__name__)
 
 
 def insert_to_db(
-    connection: Connection,
+    connection: EmbeddingConnection,
     embeddings: list[VectorEmbedding],
 ):
     """
