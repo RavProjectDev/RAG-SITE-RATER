@@ -2,11 +2,11 @@ import json
 import pysrt
 import uuid
 from rag.app.schemas.data import Chunk, TypeOfFormat
-from rag.app.core.config import settings
+from rag.app.core.config import get_settings
 from logging import getLogger
+from rag.app.services.preprocess.constants import CHUNKING_SIZE
 
 logger = getLogger(__name__)
-CHUNKING_SIZE = settings.chunk_size
 
 
 def build_chunk(subs, word_count, name_space) -> Chunk:

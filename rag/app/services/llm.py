@@ -1,18 +1,64 @@
-from typing import Union
-from openai import OpenAI
+from typing import Union, Generator
+import random
 from openai.types.chat import (
     ChatCompletionUserMessageParam,
     ChatCompletionSystemMessageParam,
 )
-from rag.app.schemas.data import LLMModel, Document
-from rag.app.core.config import settings
 
-key = settings.openai_api_key
-client = OpenAI(api_key=key)
+from rag.app.db.connections import MetricsConnection
+from rag.app.schemas.data import LLMModel, Document, Embedding
+
+from functools import lru_cache
+from openai import OpenAI
+from rag.app.core.config import get_settings
 
 
-def get_llm_response(prompt: str, model: LLMModel = LLMModel.GPT_4):
+@lru_cache()
+def get_openai_client() -> OpenAI:
+    settings = get_settings()
+    return OpenAI(api_key=settings.openai_api_key)
+
+
+# ---------------------------------------------------------------
+# Single-response LLM call
+# ---------------------------------------------------------------
+
+
+def get_llm_response(
+    metrics_connection: MetricsConnection,
+    prompt: str,
+    model: LLMModel = LLMModel.GPT_4,
+) -> str:
+    """
+    Fetches a synchronous completion from the LLM.
+    """
+    data = {}
+
+    with metrics_connection.timed(metric_type="LLM", data=data):
+        if model == LLMModel.GPT_4:
+            response, metrics = get_gpt_response(prompt=prompt, model=model.value)
+        elif model == LLMModel.MOCK:
+            response, metrics = get_mock_response()
+        else:
+            raise ValueError(f"Unsupported model: {model}")
+
+        data.update(metrics or {})
+
+    return response
+
+
+# ---------------------------------------------------------------
+# GPT-4 call
+# ---------------------------------------------------------------
+
+
+def get_gpt_response(
+    prompt: str,
+    model: str,
+) -> tuple[str, dict]:
+
     try:
+        client = get_openai_client()
         messages: list[
             Union[ChatCompletionSystemMessageParam, ChatCompletionUserMessageParam]
         ] = [
@@ -20,11 +66,14 @@ def get_llm_response(prompt: str, model: LLMModel = LLMModel.GPT_4):
                 role="system",
                 content="You are a helpful assistant knowledgeable in Rav Soloveitchik's teachings.",
             ),
-            ChatCompletionUserMessageParam(role="user", content=prompt),
+            ChatCompletionUserMessageParam(
+                role="user",
+                content=prompt,
+            ),
         ]
 
         response = client.chat.completions.create(
-            model=model.value,
+            model=model,
             messages=messages,
         )
         usage = response.usage
@@ -38,19 +87,50 @@ def get_llm_response(prompt: str, model: LLMModel = LLMModel.GPT_4):
             return "Error: Received null response from OpenAI", None
 
         metrics = {
-            "log_type": "metrics",
             "prompt_tokens": prompt_tokens,
             "completion_tokens": completion_tokens,
             "total_tokens": total_tokens,
-            "input_model": model.value,
+            "input_model": model,
             "model": used_model,
         }
-        return result
+        return result, metrics
+
     except Exception as e:
         return f"Error: {e}", None
 
 
-def stream_llm_response(prompt: str, model: str = "gpt-4"):
+# ---------------------------------------------------------------
+# Mock LLM response
+# ---------------------------------------------------------------
+
+
+def get_mock_response() -> tuple[str, dict]:
+    """
+    Returns a fixed lorem ipsum mock response and empty metrics.
+    """
+    return (
+        "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. "
+        "Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. "
+        "Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. "
+        "Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.",
+        {},
+    )
+
+
+# ---------------------------------------------------------------
+# Streaming LLM call
+# ---------------------------------------------------------------
+
+
+def stream_llm_response(
+    metrics_connection: MetricsConnection,
+    prompt: str,
+    model: str = "gpt-4",
+) -> Generator[str, None, None]:
+    """
+    Streams completion from the LLM as text chunks.
+    """
+    client = get_openai_client()
     messages: list[
         Union[ChatCompletionSystemMessageParam, ChatCompletionUserMessageParam]
     ] = [
@@ -58,25 +138,63 @@ def stream_llm_response(prompt: str, model: str = "gpt-4"):
             role="system",
             content="You are a helpful assistant knowledgeable in Rav Soloveitchik's teachings.",
         ),
-        ChatCompletionUserMessageParam(role="user", content=prompt),
+        ChatCompletionUserMessageParam(
+            role="user",
+            content=prompt,
+        ),
     ]
+
     response = client.chat.completions.create(
-        model=model, messages=messages, stream=True
+        model=model,
+        messages=messages,
+        stream=True,
     )
 
     for chunk in response:
         delta = chunk.choices[0].delta
         if delta and delta.content:
-            yield f"{delta.content}"
-    yield "data: [DONE]\n\n"
+            yield delta.content
+
+    yield "[DONE]"
+
+
+# ---------------------------------------------------------------
+# Embedding Generation (incl. mock logic)
+# ---------------------------------------------------------------
+
+
+def generate_embedding(
+    metrics_connection: MetricsConnection,
+    text: str,
+    configuration,
+) -> Embedding:
+    """
+    Generates embeddings for a given text using the specified configuration.
+    """
+    if configuration == LLMModel.MOCK:
+        # Return random floats for testing
+        return Embedding(text=text, vector=[random.uniform(-1, 1) for _ in range(3)])
+    else:
+        # Implement your real embedding logic here, e.g. OpenAI or Gemini
+        raise NotImplementedError("Only MOCK embeddings implemented in this example.")
+
+
+# ---------------------------------------------------------------
+# Prompt Generation
+# ---------------------------------------------------------------
 
 
 def generate_prompt(
-    user_question: str, data: list[Document], max_tokens: int = 1500
+    user_question: str,
+    data: list[Document],
+    max_tokens: int = 1500,
 ) -> str:
+    """
+    Constructs a prompt including retrieved context snippets.
+    """
 
     def estimate_tokens(text: str) -> int:
-        return len(text) // 4  # Rough approximation
+        return len(text) // 4  # very rough estimate
 
     context_parts = []
     token_count = 0
@@ -96,7 +214,7 @@ def generate_prompt(
 
     context = "\n\n".join(context_parts)
 
-    prompt = """
+    prompt_template = """
         You are a Rav Soloveitchik expert. A user has asked a question about the Rav's philosophy, teachings, or life. Use the quotes and metadata below to construct a thoughtful and accurate response. You must **include the most relevant quotes directly in your answer**, and mention their associated metadata (such as source and page) to support your explanation. If the question is gibberish or unrelated, inquire with the user for clarification.
 
         # Context
@@ -120,8 +238,9 @@ def generate_prompt(
         - Start with a brief introduction to the topic addressed in the question.
         - Incorporate quotes from Rav Soloveitchik directly into the text, followed by relevant metadata.
         - Conclude with an explanation tying together the quotes and their broader significance to his philosophy, teachings, or life.
-        """
-    filled_prompt = prompt.format(
+    """
+
+    filled_prompt = prompt_template.format(
         context=context,
         user_question=user_question,
     )

@@ -1,5 +1,5 @@
 from shared.classes import VectorEmbedding
-from rag.app.db.embeddingconnection import EmbeddingConnection
+from rag.app.db.connections import EmbeddingConnection
 from logging import getLogger
 
 logger = getLogger(__name__)

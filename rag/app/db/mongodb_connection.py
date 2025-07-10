@@ -1,6 +1,9 @@
 from typing import cast, Dict, List, Any
+import time
 from rag.app.schemas.data import Document, VectorEmbedding
-from rag.app.db.embeddingconnection import EmbeddingConnection, MetricsConnection
+from rag.app.db.connections import EmbeddingConnection, MetricsConnection
+from contextlib import contextmanager
+from datetime import datetime
 
 
 class MongoEmbeddingStore(EmbeddingConnection):
@@ -65,9 +68,6 @@ class MongoEmbeddingStore(EmbeddingConnection):
             return documents
         except Exception as e:
             raise
-
-
-from datetime import datetime
 
 
 class MongoMetricsConnection(MetricsConnection):

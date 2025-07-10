@@ -4,13 +4,3 @@ repos:
     hooks:
       - id: black
 
-  - repo: local
-    hooks:
-      - id: run-pytest
-        name: Run pytest
-        entry: bash -c 'PYTHONPATH=$(pwd)/rag pytest'
-        language: system
-        types: [python]
-    env:
-      GOOGLE_APPLICATION_CREDENTIALS: ./gcloud-key.json
-      GOOGLE_CLOUD_PROJECT: theravproject

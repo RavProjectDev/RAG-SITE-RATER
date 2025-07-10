@@ -1,6 +1,6 @@
 FROM python:3.13-slim
 
-WORKDIR /app
+WORKDIR /rag
 
 COPY requirements.txt .
 
@@ -9,8 +9,11 @@ RUN pip install -r requirements.txt
 
 COPY . .
 
-ENV PYTHONPATH=/app
+ENV PYTHONPATH=/
+
+RUN pytest tests
+
 
 EXPOSE 8000
 
-CMD ["uvicorn", "rag.app.main:app", "--host", "0.0.0.0", "--port", "${PORT}"]
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]

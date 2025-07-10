@@ -88,8 +88,10 @@ class DataBaseConfiguration(Enum):
 class EmbeddingConfiguration(Enum):
     BERT_SMALL = "all-MiniLM-L6-v2"
     BERT_SMALL_TRANSLATED = "all-MiniLM-L6-v2"
-    GEMINI = "embedding-001"
+    GEMINI = "gemini-embedding-001"
+    MOCK = "mock"
 
 
 class LLMModel(Enum):
     GPT_4 = "o4-mini"
+    MOCK = "mock"
