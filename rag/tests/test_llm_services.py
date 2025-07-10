@@ -143,7 +143,6 @@ def test_stream_llm_response(mock_get_client):
         prompt="Test prompt",
         model="fake-model",
     )
-
     outputs = list(generator)
     assert "Hello" in outputs
     assert " world" in outputs
