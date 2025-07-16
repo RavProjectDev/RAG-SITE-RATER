@@ -2,12 +2,17 @@ import json
 
 import httpx
 
-from fastapi import APIRouter, Request, Depends,HTTPException,status
+from fastapi import APIRouter, Request, Depends, HTTPException, status
 from starlette.responses import JSONResponse
 
 from rag.app.schemas.response import UploadResponse
 from rag.app.services.preprocess.transcripts import preprocess_raw_transcripts
-from rag.app.schemas.data import Chunk, VectorEmbedding, EmbeddingConfiguration, Embedding
+from rag.app.schemas.data import (
+    Chunk,
+    VectorEmbedding,
+    EmbeddingConfiguration,
+    Embedding,
+)
 from rag.app.services.embedding import generate_embedding
 
 from rag.app.db.connections import EmbeddingConnection, MetricsConnection
@@ -31,42 +36,42 @@ async def upload_files(
     ),
 ):
     """
-    Upload endpoint for subtitle (.srt) files.
+      Upload endpoint for subtitle (.srt) files.
 
-    Accepts multiple .srt files via multipart/form-data, processes
-    their textual content into data chunks, generates vector embeddings
-    for each chunk, and stores the embeddings in the database.
+      Accepts multiple .srt files via multipart/form-data, processes
+      their textual content into data chunks, generates vector embeddings
+      for each chunk, and stores the embeddings in the database.
 
-    Request:
-    --------
-  b'{"_id":"55806772-3246-4eaf-88a3-4448eb39846e","_updatedAt":"2025-07-15T20:31:24Z","slug":"kedusha-and-malchus","title":"Kedusha and Malchus","transcriptURL":"https://cdn.sanity.io/files/ybwh5ic4/primary/2fbb38de4c27f54dfe767841cde0dae92c4be543.srt"}'
-    Response:
-    ---------
-    JSON object containing:
-        {
-            "results": [
-                {
-                    "vector": [...],
-                    "dimension": <int>,
-                    "data": {
-                        "text": <str>,
-                        ...
-                    }
-                },
-                ...
-            ]
-        }
+      Request:
+      --------
+    b'{"_id":"55806772-3246-4eaf-88a3-4448eb39846e","_updatedAt":"2025-07-15T20:31:24Z","slug":"kedusha-and-malchus","title":"Kedusha and Malchus","transcriptURL":"https://cdn.sanity.io/files/ybwh5ic4/primary/2fbb38de4c27f54dfe767841cde0dae92c4be543.srt"}'
+      Response:
+      ---------
+      JSON object containing:
+          {
+              "results": [
+                  {
+                      "vector": [...],
+                      "dimension": <int>,
+                      "data": {
+                          "text": <str>,
+                          ...
+                      }
+                  },
+                  ...
+              ]
+          }
 
-    Raises:
-    -------
-    HTTPException (400):
-        If any uploaded file is not an .srt file.
+      Raises:
+      -------
+      HTTPException (400):
+          If any uploaded file is not an .srt file.
 
-    HTTPException (500):
-        For any unexpected server-side errors.
+      HTTPException (500):
+          For any unexpected server-side errors.
     """
-    raw = await request.body()                      # b'...'
-    data = json.loads(raw.decode())                 # dict
+    raw = await request.body()  # b'...'
+    data = json.loads(raw.decode())  # dict
     parsed: UploadRequest = UploadRequest(**data)
     if not str(parsed.transcriptURL).lower().endswith(".srt"):
         return JSONResponse(
@@ -96,9 +101,9 @@ async def upload_files(
         metrics_connection=metrics_conn,
     )
     await embedding_conn.insert(embeddings)
-    return UploadResponse(
-        message="Uploaded file successfully"
-    )
+    return UploadResponse(message="Uploaded file successfully")
+
+
 async def embedding_helper(
     chunks: list[Chunk],
     configuration: EmbeddingConfiguration,
@@ -124,7 +129,7 @@ async def embedding_helper(
     """
     embeddings: list[VectorEmbedding] = []
     for chunk in chunks:
-        data : Embedding = await generate_embedding(
+        data: Embedding = await generate_embedding(
             metrics_connection=metrics_connection,
             text=chunk.text,
             configuration=configuration,

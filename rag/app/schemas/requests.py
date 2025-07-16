@@ -2,7 +2,7 @@ from pydantic import BaseModel, HttpUrl
 from enum import Enum, auto
 
 
-class TypeOfRequest(str,Enum):
+class TypeOfRequest(str, Enum):
     STREAM = auto()
     FULL = auto()
 

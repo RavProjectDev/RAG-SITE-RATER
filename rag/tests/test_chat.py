@@ -1,10 +1,11 @@
 import pytest
+
 pytestmark = pytest.mark.asyncio
 from httpx import AsyncClient, ASGITransport
 from asgi_lifespan import LifespanManager
 from unittest.mock import patch, MagicMock
 from rag.app.main import app
-from rag.app.schemas.requests import ChatRequest,TypeOfRequest
+from rag.app.schemas.requests import ChatRequest, TypeOfRequest
 
 
 @pytest.fixture(autouse=True)
@@ -42,8 +43,7 @@ async def test_chat_handler(mock_embed, mock_preprocess, mock_llm):
 
     app.dependency_overrides = {}
     payload = ChatRequest(
-        question  ="What is Torah?",
-        type_of_request=TypeOfRequest.FULL.value
+        question="What is Torah?", type_of_request=TypeOfRequest.FULL.value
     )
     async with LifespanManager(app):
         transport = ASGITransport(app=app)  # pass your FastAPI app here
@@ -55,8 +55,6 @@ async def test_chat_handler(mock_embed, mock_preprocess, mock_llm):
             body = response.json()
             assert body["message"] == "Mocked response"
             assert isinstance(body["metadatas"], list)
-
-
 
 
 @pytest.mark.asyncio
@@ -72,8 +70,7 @@ async def test_chat_fail(mock_embed, mock_preprocess, mock_llm):
 
     app.dependency_overrides = {}
     payload = ChatRequest(
-        question  ="What is Torah?",
-        type_of_request=TypeOfRequest.FULL.value
+        question="What is Torah?", type_of_request=TypeOfRequest.FULL.value
     )
     async with LifespanManager(app):
         transport = ASGITransport(app=app)  # pass your FastAPI app here

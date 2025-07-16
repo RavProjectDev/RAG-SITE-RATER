@@ -30,13 +30,16 @@ from rag.app.dependencies import (
 
 router = APIRouter()
 
+
 @router.post("/", response_model=None)
 async def handler(
     chat_request: ChatRequest,
     request: Request,
     embedding_conn: EmbeddingConnection = Depends(get_embedding_conn),
     metrics_conn: MetricsConnection = Depends(get_metrics_conn),
-    embedding_configuration: EmbeddingConfiguration = Depends(get_embedding_configuration),
+    embedding_configuration: EmbeddingConfiguration = Depends(
+        get_embedding_configuration
+    ),
     llm_configuration: LLMModel = Depends(get_llm_configuration),
 ) -> ChatResponse | StreamingResponse:
     """
@@ -52,6 +55,7 @@ async def handler(
         connection=embedding_conn,
     )
     if chat_request.type_of_request == TypeOfRequest.STREAM:
+
         def event_generator():
             """Synchronous generator for Server-Sent Events (SSE)."""
             yield f"data: {json.dumps({'metadata': metadata})}\n\n"
@@ -81,6 +85,7 @@ async def handler(
         except Exception as e:
             raise HTTPException(status_code=500, detail=f"Unexpected error: {str(e)}")
     else:
+
         async def full_response():
             # Get LLM response
             llm_response = await get_llm_response(
@@ -110,8 +115,6 @@ async def handler(
             raise HTTPException(status_code=500, detail=f"Unexpected error: {str(e)}")
 
 
-
-
 async def generate(
     chat_request: ChatRequest,
     request: Request,
@@ -132,7 +135,7 @@ async def generate(
     cleaned_question = pre_process_user_query(user_question)
 
     # Generate embedding
-    embedding=  await generate_embedding(
+    embedding = await generate_embedding(
         metrics_connection=request.app.state.metrics_connection,
         text=cleaned_question,
         configuration=embedding_configuration,

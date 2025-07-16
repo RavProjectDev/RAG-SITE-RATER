@@ -1,8 +1,8 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, Request
 
 router = APIRouter()
 
 
 @router.get("/")
-def get_health():
-    return {"status": "ok"}
+def get_health(request: Request):
+    return request.json()

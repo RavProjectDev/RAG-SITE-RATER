@@ -22,7 +22,9 @@ class EmbeddingConnection(ABC):
         pass
 
     @abstractmethod
-    async def retrieve(self, embedded_data: List[float],name_spaces: list[str] | None = None):
+    async def retrieve(
+        self, embedded_data: List[float], name_spaces: list[str] | None = None
+    ):
         """
         Retrieves documents based on vector
         """

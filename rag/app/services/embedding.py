@@ -10,7 +10,6 @@ from rag.app.exceptions import EmbeddingError
 import concurrent.futures
 
 
-
 async def gemini_embedding(text_data: str) -> list[float]:
     credentials, _ = default()
     settings = get_settings()
@@ -37,9 +36,9 @@ async def gemini_embedding(text_data: str) -> list[float]:
 
 
 async def generate_embedding(
-        metrics_connection: MetricsConnection,
-        text: str,
-        configuration: EmbeddingConfiguration,
+    metrics_connection: MetricsConnection,
+    text: str,
+    configuration: EmbeddingConfiguration,
 ) -> Embedding:
     data = {"embedding_type": configuration.value}
     if configuration is None:

@@ -16,11 +16,14 @@ from rag.app.core.config import get_settings, Environment
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
 
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     settings = get_settings()
     try:
-        client = AsyncIOMotorClient(settings.mongodb_uri, tlsCAFile=certifi.where(), maxPoolSize=50)
+        client = AsyncIOMotorClient(
+            settings.mongodb_uri, tlsCAFile=certifi.where(), maxPoolSize=50
+        )
         db = client[settings.mongodb_db_name]
         vector_embedding_collection = db[settings.mongodb_vector_collection]
         metrics_collection = db[settings.metrics_collection]
@@ -40,7 +43,9 @@ async def lifespan(app: FastAPI):
     finally:
         client.close()
 
+
 app = FastAPI(lifespan=lifespan)
+
 
 @app.middleware("http")
 async def log_requests(request: Request, call_next):
@@ -52,7 +57,9 @@ async def log_requests(request: Request, call_next):
     response = await call_next(request)
     duration = time.perf_counter() - start
 
-    if response.status_code in (200, 500) and hasattr(request.app.state, 'metrics_connection'):
+    if response.status_code in (200, 500) and hasattr(
+        request.app.state, "metrics_connection"
+    ):
         metrics_connection: MetricsConnection = request.app.state.metrics_connection
         data = {
             "endpoint": request.url.path,
@@ -63,6 +70,7 @@ async def log_requests(request: Request, call_next):
         metrics_connection.log(metric_type="endpoint_timing", data=data)
     logger.info(f"{request.method} {request.url.path} completed in {duration:.4f}s")
     return response
+
 
 app.include_router(chat_router, prefix="/api/v1/chat")
 app.include_router(upload_router, prefix="/api/v1/upload")
