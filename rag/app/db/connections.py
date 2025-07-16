@@ -12,7 +12,7 @@ class EmbeddingConnection(ABC):
     """
 
     @abstractmethod
-    def insert(self, embedded_data: List[VectorEmbedding]):
+    async def insert(self, embedded_data: List[VectorEmbedding]):
         """
         Inserts one vector to the database.
         :param embedded_data:
@@ -22,7 +22,7 @@ class EmbeddingConnection(ABC):
         pass
 
     @abstractmethod
-    def retrieve(self, embedded_data: List[float]):
+    async def retrieve(self, embedded_data: List[float],name_spaces: list[str] | None = None):
         """
         Retrieves documents based on vector
         """

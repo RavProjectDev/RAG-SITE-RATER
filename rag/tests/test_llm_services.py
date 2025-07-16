@@ -7,7 +7,6 @@ from rag.app.services.llm import (
     get_gpt_response,
     get_mock_response,
     stream_llm_response,
-    generate_embedding,
     generate_prompt,
 )
 from rag.app.schemas.data import LLMModel, Document
@@ -154,16 +153,6 @@ def test_stream_llm_response(mock_get_client):
 # ---------------------------------------------------------------
 
 
-def test_generate_embedding_mock():
-    metrics = DummyMetricsConnection()
-    embedding = generate_embedding(
-        metrics_connection=metrics,
-        text="Hello world",
-        configuration=LLMModel.MOCK,
-    )
-    assert isinstance(embedding.vector, list)
-    assert len(embedding.vector) == 3
-    assert isinstance(embedding.vector[0], float)
 
 
 # ---------------------------------------------------------------

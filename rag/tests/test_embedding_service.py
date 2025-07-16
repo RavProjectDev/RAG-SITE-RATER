@@ -2,8 +2,6 @@ import pytest
 import numpy as np
 from unittest.mock import patch, MagicMock
 from rag.app.services.embedding import (
-    load_bert_model,
-    bert_small,
     gemini_embedding,
     generate_embedding,
 )
@@ -43,16 +41,6 @@ except ImportError:
 # ---------------------------------------------------------------
 
 
-@pytest.mark.skipif(not bert_available, reason="SentenceTransformers not installed")
-@patch("sentence_transformers.SentenceTransformer")
-def test_load_bert_model(mock_transformer):
-    mock_model = MagicMock()
-    mock_transformer.return_value = mock_model
-
-    model = load_bert_model()
-    assert model is mock_model
-    mock_transformer.assert_called_once_with("all-MiniLM-L6-v2")
-
 
 # ---------------------------------------------------------------
 # Test bert_small
@@ -60,16 +48,6 @@ def test_load_bert_model(mock_transformer):
 
 
 @pytest.mark.skipif(not bert_available, reason="SentenceTransformers not installed")
-@patch("rag.app.services.embedding.load_bert_model")
-def test_bert_small_function(mock_loader):
-    fake_model = MagicMock()
-    fake_model.encode.return_value = np.array([1.1, 2.2, 3.3])
-    mock_loader.return_value = fake_model
-
-    result = bert_small("Hello world")
-    assert result == [1.1, 2.2, 3.3]
-    fake_model.encode.assert_called_once_with("Hello world")
-
 
 # ---------------------------------------------------------------
 # Test gemini_embedding

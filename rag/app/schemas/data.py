@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 from typing import Optional, List, Dict
 import uuid
 from enum import Enum, auto
@@ -95,3 +95,4 @@ class EmbeddingConfiguration(Enum):
 class LLMModel(Enum):
     GPT_4 = "o4-mini"
     MOCK = "mock"
+

@@ -9,14 +9,14 @@ from rag.app.db.connections import MetricsConnection
 from rag.app.schemas.data import LLMModel, Document, Embedding
 
 from functools import lru_cache
-from openai import OpenAI
+from openai import OpenAI, AsyncOpenAI
 from rag.app.core.config import get_settings
 
 
 @lru_cache()
-def get_openai_client() -> OpenAI:
+def get_openai_client() -> AsyncOpenAI:
     settings = get_settings()
-    return OpenAI(api_key=settings.openai_api_key)
+    return AsyncOpenAI(api_key=settings.openai_api_key)
 
 
 # ---------------------------------------------------------------
@@ -24,7 +24,7 @@ def get_openai_client() -> OpenAI:
 # ---------------------------------------------------------------
 
 
-def get_llm_response(
+async def get_llm_response(
     metrics_connection: MetricsConnection,
     prompt: str,
     model: LLMModel = LLMModel.GPT_4,
@@ -52,10 +52,10 @@ def get_llm_response(
 # ---------------------------------------------------------------
 
 
-def get_gpt_response(
+async def get_gpt_response(
     prompt: str,
     model: str,
-) -> tuple[str, dict]:
+) -> tuple[str, dict | None]:
 
     try:
         client = get_openai_client()
@@ -72,7 +72,7 @@ def get_gpt_response(
             ),
         ]
 
-        response = client.chat.completions.create(
+        response = await client.chat.completions.create(
             model=model,
             messages=messages,
         )
@@ -161,22 +161,6 @@ def stream_llm_response(
 # ---------------------------------------------------------------
 # Embedding Generation (incl. mock logic)
 # ---------------------------------------------------------------
-
-
-def generate_embedding(
-    metrics_connection: MetricsConnection,
-    text: str,
-    configuration,
-) -> Embedding:
-    """
-    Generates embeddings for a given text using the specified configuration.
-    """
-    if configuration == LLMModel.MOCK:
-        # Return random floats for testing
-        return Embedding(text=text, vector=[random.uniform(-1, 1) for _ in range(3)])
-    else:
-        # Implement your real embedding logic here, e.g. OpenAI or Gemini
-        raise NotImplementedError("Only MOCK embeddings implemented in this example.")
 
 
 # ---------------------------------------------------------------

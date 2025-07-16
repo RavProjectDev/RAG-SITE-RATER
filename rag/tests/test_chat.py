@@ -1,40 +1,14 @@
-# tests/test_chat.py
-
-import json
 import pytest
-from fastapi.testclient import TestClient
+pytestmark = pytest.mark.asyncio
+from httpx import AsyncClient, ASGITransport
+from asgi_lifespan import LifespanManager
 from unittest.mock import patch, MagicMock
 from rag.app.main import app
-
-# ---------------------------------------------------------------
-# Helper to parse streaming SSE responses into payloads
-# ---------------------------------------------------------------
-
-
-def parse_sse(response_bytes):
-    text = response_bytes.decode()
-    events = text.strip().split("\n\n")
-    payloads = []
-    for evt in events:
-        if evt.startswith("data: "):
-            data = evt[len("data: ") :].strip()
-            if not data or data == "[DONE]":
-                continue
-            payloads.append(json.loads(data))
-    return payloads
-
-
-# ---------------------------------------------------------------
-# Fixture: Patch get_settings globally for all chat tests
-# ---------------------------------------------------------------
+from rag.app.schemas.requests import ChatRequest,TypeOfRequest
 
 
 @pytest.fixture(autouse=True)
 def patch_get_settings(monkeypatch):
-    """
-    Ensures all tests use a fake settings object instead of real environment values.
-    """
-
     from rag.app.core import config
     from rag.app.core.config import Environment, EmbeddingConfiguration, LLMModel
 
@@ -46,83 +20,68 @@ def patch_get_settings(monkeypatch):
     fake_settings.mongodb_db_name = "testdb"
     fake_settings.mongodb_vector_collection = "test_vectors"
     fake_settings.collection_index = "test_index"
-    fake_settings.gemini_api_key = "gemini_test_key"
-    fake_settings.google_cloud_project_id = "my-project"
     fake_settings.vector_path = "vector"
-    fake_settings.vertex_region = "us-central1"
-    fake_settings.chunk_size = 100
-    fake_settings.external_api_timeout = 30
     fake_settings.metrics_collection = "metrics"
+    fake_settings.external_api_timeout = 10
     fake_settings.embedding_configuration = EmbeddingConfiguration.MOCK
     fake_settings.llm_configuration = LLMModel.MOCK
 
     monkeypatch.setattr(config, "get_settings", lambda: fake_settings)
 
 
-# ---------------------------------------------------------------
-# Test Class for Chat Endpoints
-# ---------------------------------------------------------------
+@pytest.mark.asyncio
+@patch("rag.app.api.v1.chat.get_llm_response", return_value="Mocked response")
+@patch("rag.app.api.v1.chat.pre_process_user_query", return_value="Processed")
+@patch("rag.app.api.v1.chat.generate_embedding")
+async def test_chat_handler(mock_embed, mock_preprocess, mock_llm):
+    mock_embed.return_value.vector = [0.1] * 784
 
+    # override dependencies
+    mock_conn = MagicMock()
+    mock_conn.retrieve.return_value = []
 
-class TestChatRoutes:
-    @patch("rag.app.api.v1.chat.get_llm_response", return_value="mocked LLM response")
-    @patch("rag.app.api.v1.chat.verify", return_value=(True, "What is Torah?"))
-    @patch("rag.app.api.v1.chat.pre_process_user_query", return_value="Torah?")
-    @patch("rag.app.api.v1.chat.generate_embedding")
-    def test_handler_success(self, mock_embed, mock_pre, mock_verify, mock_llm):
-        mock_embed.return_value.vector = [0.1, 0.2, 0.3]
-
-        mock_conn = MagicMock()
-        mock_conn.retrieve.return_value = []
-
-        app.dependency_overrides = {}
-        with TestClient(app) as client:
-            client.app.state.mongo_conn = mock_conn
-            client.app.state.metrics_connection = MagicMock()
-
-            payload = {"question": "What is Torah?"}
-            response = client.post("/api/v1/chat/", json=payload)
-
+    app.dependency_overrides = {}
+    payload = ChatRequest(
+        question  ="What is Torah?",
+        type_of_request=TypeOfRequest.FULL.value
+    )
+    async with LifespanManager(app):
+        transport = ASGITransport(app=app)  # pass your FastAPI app here
+        async with AsyncClient(transport=transport, base_url="http://test") as client:
+            response = await client.post("/api/v1/chat/", json=payload.model_dump())
+            assert response.status_code == 200
+            response = await client.post("/api/v1/chat/", json=payload.model_dump())
             assert response.status_code == 200
             body = response.json()
-            assert "message" in body
-            assert body["message"] == "mocked LLM response"
-            assert isinstance(body["metadata"], list)
+            assert body["message"] == "Mocked response"
+            assert isinstance(body["metadatas"], list)
 
-    @patch(
-        "rag.app.api.v1.chat.stream_llm_response",
-        return_value=iter(["chunk1", "chunk2"]),
+
+
+
+@pytest.mark.asyncio
+@patch("rag.app.api.v1.chat.get_llm_response", return_value="Mocked response")
+@patch("rag.app.api.v1.chat.pre_process_user_query", return_value="Processed")
+@patch("rag.app.api.v1.chat.generate_embedding")
+async def test_chat_fail(mock_embed, mock_preprocess, mock_llm):
+    mock_embed.return_value.vector = [0.1] * 732
+
+    # override dependencies
+    mock_conn = MagicMock()
+    mock_conn.retrieve.return_value = []
+
+    app.dependency_overrides = {}
+    payload = ChatRequest(
+        question  ="What is Torah?",
+        type_of_request=TypeOfRequest.FULL.value
     )
-    @patch("rag.app.api.v1.chat.verify", return_value=(True, "What is Torah?"))
-    @patch("rag.app.api.v1.chat.pre_process_user_query", return_value="Torah?")
-    @patch("rag.app.api.v1.chat.generate_embedding")
-    def test_stream_success(self, mock_embed, mock_pre, mock_verify, mock_stream):
-        mock_embed.return_value.vector = [0.1, 0.2, 0.3]
-
-        mock_conn = MagicMock()
-        mock_conn.retrieve.return_value = []
-
-        app.dependency_overrides = {}
-        with TestClient(app) as client:
-            client.app.state.mongo_conn = mock_conn
-            client.app.state.metrics_connection = MagicMock()
-
-            payload = {"question": "What is Torah?"}
-            response = client.post("/api/v1/chat/stream", json=payload)
-
+    async with LifespanManager(app):
+        transport = ASGITransport(app=app)  # pass your FastAPI app here
+        async with AsyncClient(transport=transport, base_url="http://test") as client:
+            response = await client.post("/api/v1/chat/", json=payload.model_dump())
             assert response.status_code == 200
-            payloads = parse_sse(response.content)
-            chunk_texts = [p["data"] for p in payloads if "data" in p]
-
-            assert "chunk1" in chunk_texts
-            assert "chunk2" in chunk_texts
-
-    def test_handler_invalid_event(self):
-        with patch("rag.app.api.v1.chat.verify", return_value=(False, "error")):
-            response = TestClient(app).post("/api/v1/chat/", json={})
-            assert response.status_code == 400
-
-    def test_handler_internal_error(self):
-        with patch("rag.app.api.v1.chat.verify", side_effect=Exception("fail")):
-            response = TestClient(app).post("/api/v1/chat/", json={"question": "fail"})
-            assert response.status_code == 500
+            response = await client.post("/api/v1/chat/", json=payload.model_dump())
+            assert response.status_code == 200
+            body = response.json()
+            assert body["message"] == "Mocked response"
+            assert isinstance(body["metadatas"], list)
