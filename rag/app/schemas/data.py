@@ -2,6 +2,7 @@ from pydantic import BaseModel
 from typing import Optional, List, Dict
 import uuid
 from enum import Enum, auto
+from pydantic import BaseModel
 
 
 class Chunk(BaseModel):
@@ -61,13 +62,12 @@ class Embedding(BaseModel):
 class Document(BaseModel):
     text: str
     metadata: Dict[str, object]
-    vector: List[float]
 
     def to_dict(self) -> dict:
         return {
             "text": self.text,
-            "vector": self.vector,
             "metadata": self.metadata,
+            "score": self.score,
         }
 
 

@@ -1,22 +1,43 @@
-from typing import Union, Generator
-import random
+from typing import Union
 from openai.types.chat import (
     ChatCompletionUserMessageParam,
     ChatCompletionSystemMessageParam,
 )
 
-from rag.app.db.connections import MetricsConnection
-from rag.app.schemas.data import LLMModel, Document, Embedding
+import asyncio
 
+
+from rag.app.db.connections import MetricsConnection
+from rag.app.schemas.data import LLMModel, Document
+
+from rag.app.exceptions.llm import (
+    LLMBaseException,
+    LLMConnectionBaseException,
+    LLMTimeoutBaseException,
+    LLMRequestBaseException,
+)
 from functools import lru_cache
-from openai import OpenAI, AsyncOpenAI
+from openai import (
+    AsyncOpenAI,
+    APIError,
+    AuthenticationError,
+    RateLimitError,
+    APIConnectionError,
+    OpenAIError,
+)
 from rag.app.core.config import get_settings
 
 
 @lru_cache()
 def get_openai_client() -> AsyncOpenAI:
-    settings = get_settings()
-    return AsyncOpenAI(api_key=settings.openai_api_key)
+    try:
+        settings = get_settings()
+    except (AttributeError, KeyError, TypeError) as e:
+        raise LLMConnectionBaseException("Failed to get data from settings")
+    try:
+        return AsyncOpenAI(api_key=settings.openai_api_key)
+    except (OpenAIError, AuthenticationError) as e:
+        raise LLMBaseException("OpenAI API connection failed: {}".format(e))
 
 
 # ---------------------------------------------------------------
@@ -33,18 +54,15 @@ async def get_llm_response(
     Fetches a synchronous completion from the LLM.
     """
     data = {}
-
-    with metrics_connection.timed(metric_type="LLM", data=data):
+    async with metrics_connection.timed(metric_type="LLM", data=data):
         if model == LLMModel.GPT_4:
-            response, metrics = get_gpt_response(prompt=prompt, model=model.value)
+            response, metrics = await get_gpt_response(prompt=prompt, model=model.value)
         elif model == LLMModel.MOCK:
             response, metrics = get_mock_response()
         else:
             raise ValueError(f"Unsupported model: {model}")
-
         data.update(metrics or {})
-
-    return response
+        return response
 
 
 # ---------------------------------------------------------------
@@ -71,11 +89,14 @@ async def get_gpt_response(
                 content=prompt,
             ),
         ]
+        try:
+            response = await client.chat.completions.create(
+                model=model,
+                messages=messages,
+            )
+        except OpenAIError as e:
+            raise LLMRequestBaseException(f"Failed to get data from OpenAI: {e}")
 
-        response = await client.chat.completions.create(
-            model=model,
-            messages=messages,
-        )
         usage = response.usage
         prompt_tokens = usage.prompt_tokens
         completion_tokens = usage.completion_tokens
@@ -96,7 +117,7 @@ async def get_gpt_response(
         return result, metrics
 
     except Exception as e:
-        return f"Error: {e}", None
+        raise
 
 
 # ---------------------------------------------------------------
@@ -122,11 +143,11 @@ def get_mock_response() -> tuple[str, dict]:
 # ---------------------------------------------------------------
 
 
-def stream_llm_response(
+async def stream_llm_response(
     metrics_connection: MetricsConnection,
     prompt: str,
     model: str = "gpt-4",
-) -> Generator[str, None, None]:
+):
     """
     Streams completion from the LLM as text chunks.
     """
@@ -143,19 +164,47 @@ def stream_llm_response(
             content=prompt,
         ),
     ]
+    settings = get_settings()
+    try:
+        # Make the async streaming API call with timeout
+        response = await asyncio.wait_for(
+            client.chat.completions.create(
+                model=model,
+                messages=messages,
+                stream=True,
+            ),
+            timeout=settings.external_api_timeout,
+        )
 
-    response = client.chat.completions.create(
-        model=model,
-        messages=messages,
-        stream=True,
-    )
+        # Log metrics (e.g., start of streaming)
+        async with metrics_connection.timed(metric_type="LLM_STREAM", data={}):
+            async for chunk in response:
+                try:
+                    if not chunk.choices or not chunk.choices[0].delta:
+                        yield "Error: Invalid chunk structure"
+                        continue
+                    delta = chunk.choices[0].delta
+                    if delta.content:
+                        yield delta.content
+                except (AttributeError, IndexError):
+                    yield "Error: Invalid chunk structure"
+                    break
 
-    for chunk in response:
-        delta = chunk.choices[0].delta
-        if delta and delta.content:
-            yield delta.content
-
-    yield "[DONE]"
+        yield "[DONE]"
+    except asyncio.TimeoutError:
+        raise LLMTimeoutBaseException(
+            f"LLM call timed out after {settings.external_api_timeout} seconds"
+        )
+    except AuthenticationError:
+        raise LLMRequestBaseException("Invalid OpenAI API key")
+    except RateLimitError:
+        raise LLMRequestBaseException("OpenAI rate limit exceeded")
+    except APIConnectionError:
+        raise LLMConnectionBaseException("Failed to connect to OpenAI API")
+    except APIError as e:
+        raise LLMRequestBaseException(f"OpenAI API error: {str(e)}")
+    except Exception as e:
+        raise LLMBaseException(f"Unexpected error: {str(e)}")
 
 
 # ---------------------------------------------------------------

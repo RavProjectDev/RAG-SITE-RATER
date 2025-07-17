@@ -3,8 +3,8 @@ from enum import Enum, auto
 
 
 class TypeOfRequest(str, Enum):
-    STREAM = auto()
-    FULL = auto()
+    STREAM = "STREAM"
+    FULL = "FULL"
 
 
 class ChatRequest(BaseModel):

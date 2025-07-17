@@ -1,8 +1,8 @@
 import time
 from abc import ABC, abstractmethod
 from typing import List, Dict, Any
-from rag.app.schemas.data import VectorEmbedding
-from contextlib import contextmanager
+from rag.app.schemas.data import VectorEmbedding, Document
+from contextlib import asynccontextmanager
 
 
 class EmbeddingConnection(ABC):
@@ -12,7 +12,7 @@ class EmbeddingConnection(ABC):
     """
 
     @abstractmethod
-    async def insert(self, embedded_data: List[VectorEmbedding]):
+    async def insert(self, embedded_data: List[VectorEmbedding]) -> list[Document]:
         """
         Inserts one vector to the database.
         :param embedded_data:
@@ -33,11 +33,11 @@ class EmbeddingConnection(ABC):
 
 class MetricsConnection(ABC):
     @abstractmethod
-    def log(self, metric_type: str, data: Dict[str, Any]):
+    async def log(self, metric_type: str, data: Dict[str, Any]):
         pass
 
-    @contextmanager
-    def timed(self, metric_type: str, data: Dict[str, Any]):
+    @asynccontextmanager
+    async def timed(self, metric_type: str, data: Dict[str, Any]):
         """
         Context manager to time a block and automatically log the duration.
         """
@@ -47,4 +47,4 @@ class MetricsConnection(ABC):
         finally:
             duration = time.perf_counter() - start
             data_with_duration = {**data, "duration": f"{duration:.4f}"}
-            self.log(metric_type, data_with_duration)
+            await self.log(metric_type, data_with_duration)

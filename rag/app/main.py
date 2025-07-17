@@ -1,15 +1,18 @@
 import time
 import logging
 from contextlib import asynccontextmanager
-from fastapi import FastAPI, Request, Depends
+from fastapi import FastAPI, Request
 from motor.motor_asyncio import AsyncIOMotorClient
 import certifi
+from fastapi.middleware.cors import CORSMiddleware
+
 
 from rag.app.api.v1.chat import router as chat_router
 from rag.app.api.v1.upload import router as upload_router
 from rag.app.api.v1.health import router as health_router
+from rag.app.api.v1.docs import router as docs_router
 from rag.app.api.v1.mock import router as mock_router
-from rag.app.db.connections import EmbeddingConnection, MetricsConnection
+from rag.app.db.connections import MetricsConnection
 from rag.app.db.mongodb_connection import MongoEmbeddingStore, MongoMetricsConnection
 from rag.app.core.config import get_settings, Environment
 
@@ -46,6 +49,14 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(lifespan=lifespan)
 
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # or specify list of allowed origins
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 
 @app.middleware("http")
 async def log_requests(request: Request, call_next):
@@ -67,7 +78,7 @@ async def log_requests(request: Request, call_next):
             "status_code": response.status_code,
             "duration": duration,  # Store as float
         }
-        metrics_connection.log(metric_type="endpoint_timing", data=data)
+        await metrics_connection.log(metric_type="endpoint_timing", data=data)
     logger.info(f"{request.method} {request.url.path} completed in {duration:.4f}s")
     return response
 
@@ -76,3 +87,4 @@ app.include_router(chat_router, prefix="/api/v1/chat")
 app.include_router(upload_router, prefix="/api/v1/upload")
 app.include_router(health_router, prefix="/api/v1/health")
 app.include_router(mock_router, prefix="/api/v1/test")
+app.include_router(docs_router, prefix="")

@@ -1,13 +1,42 @@
+import time
 import uuid
+from importlib.metadata import metadata
+
 from fastapi import APIRouter, Request, HTTPException
 from fastapi.responses import JSONResponse, StreamingResponse
 import json
 import asyncio
 
 from rag.app.core.config import get_settings
-from rag.app.exceptions import BaseAppException
+from rag.app.schemas.requests import ChatRequest
+from rag.app.schemas.response import ChatResponse
 
 router = APIRouter()
+
+
+@router.post("/full", response_model=ChatResponse)
+async def stream(request: ChatRequest) -> ChatResponse:
+    await asyncio.sleep(5)  # async wait
+
+    message = (
+        "Lorem ipsum dolor sit amet, consectetur adipiscing elit. "
+        "Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. "
+        "Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. "
+        "Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. "
+        "Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum."
+    )
+
+    metadatas = [
+        {
+            "chunk_size": 106,
+            "time_start": "00:11:11,504",
+            "time_end": "00:12:24,744",
+            "name_space": "Behaalotcha.srt",
+            "id": str(uuid.uuid4()),
+        }
+    ]
+
+    return ChatResponse(message=message, metadatas=metadatas)
 
 
 @router.post("/stream")
@@ -160,7 +189,5 @@ async def stream(request: Request):
             },
             status_code=500,
         )
-    except BaseAppException as e:
-        return JSONResponse(content={"error": str(e)}, status_code=400)
     except Exception as e:
         return JSONResponse(content={"error": str(e)}, status_code=500)

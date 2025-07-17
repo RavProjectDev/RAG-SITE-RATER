@@ -49,6 +49,7 @@ async def test_chat_handler(mock_embed, mock_preprocess, mock_llm):
         transport = ASGITransport(app=app)  # pass your FastAPI app here
         async with AsyncClient(transport=transport, base_url="http://test") as client:
             response = await client.post("/api/v1/chat/", json=payload.model_dump())
+            print(response.json())
             assert response.status_code == 200
             response = await client.post("/api/v1/chat/", json=payload.model_dump())
             assert response.status_code == 200
@@ -76,6 +77,7 @@ async def test_chat_fail(mock_embed, mock_preprocess, mock_llm):
         transport = ASGITransport(app=app)  # pass your FastAPI app here
         async with AsyncClient(transport=transport, base_url="http://test") as client:
             response = await client.post("/api/v1/chat/", json=payload.model_dump())
+
             assert response.status_code == 200
             response = await client.post("/api/v1/chat/", json=payload.model_dump())
             assert response.status_code == 200
