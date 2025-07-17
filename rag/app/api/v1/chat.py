@@ -38,9 +38,6 @@ router = APIRouter()
 @router.post(
     "/",
     response_model=None,
-    responses={
-        420: {"test": "", "": ""},
-    },
 )
 async def handler(
     chat_request: ChatRequest,
@@ -86,7 +83,7 @@ async def handler(
         if chat_request.type_of_request == TypeOfRequest.STREAM:
 
             async def event_generator():
-                """Synchronous generator for Server-Sent Events (SSE)."""
+                """Asynchronous generator for Server-Sent Events (SSE)."""
                 yield f"data: {json.dumps({'metadata': metadata})}\n\n"
                 async for chunk in stream_llm_response(
                     metrics_connection=metrics_conn,
