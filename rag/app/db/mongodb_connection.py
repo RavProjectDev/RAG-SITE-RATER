@@ -16,7 +16,7 @@ from rag.app.exceptions.db import (
     RetrievalTimeoutException,
     NoDocumentFoundException,
 )
-from rag.app.schemas.data import VectorEmbedding, SanityData
+from rag.app.schemas.data import VectorEmbedding, SanityData, TranscriptData
 from rag.app.models.data import DocumentModel, Metadata
 
 
@@ -128,19 +128,36 @@ class MongoEmbeddingStore(EmbeddingConnection):
 
         return documents
 
-    async def get_all_unique_transcript_ids(self) -> list[str]:
+    async def get_all_unique_transcript_ids(self) -> list[TranscriptData]:
         pipeline = [
-            {"$group": {"_id": None, "unique_ids": {"$addToSet": "$sanity_data._id"}}},
-            {"$project": {"unique_ids": 1}},
+            {
+                "$group": {
+                    "_id": "$sanity_data.id",
+                    "transcript_hash": {"$first": "$sanity_data.hash"}
+                }
+            },
+            {
+                "$project": {
+                    "_id": 0,
+                    "transcript_id": "$_id",
+                    "transcript_hash": 1
+                }
+            }
         ]
+
         cursor = self.collection.aggregate(pipeline)
         result = await cursor.to_list(length=1)
         return result[0]["unique_ids"] if result else []
 
+    async def delete_document(self, transcript_id: str) -> bool:
+        result = await self.collection.delete_many({"sanity_data.id": transcript_id})
+        return result.deleted_count > 0
 
 class MongoMetricsConnection(MetricsConnection):
     def __init__(self, collection: AsyncIOMotorCollection):
         self.collection = collection
+
+
 
     async def log(self, metric_type: str, data: Dict[str, Any]):
         doc = {"type": metric_type, "timestamp": datetime.utcnow(), **data}

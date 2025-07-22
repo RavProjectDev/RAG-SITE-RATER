@@ -25,6 +25,7 @@ class Chunk(BaseModel):
     name_space: str
 
 
+
 class VectorEmbedding(BaseModel):
     """
     Represents an embedding vector for a chunk of text.
@@ -44,7 +45,7 @@ class VectorEmbedding(BaseModel):
         return {
             "vector": self.vector,
             "text": self.data.text,
-            "metadata": self.data.to_dict(),
+            "metadata": self.data.model_dump(),
             "sanity_data": self.sanity_data.to_dict(),
         }
 
@@ -78,3 +79,7 @@ class EmbeddingConfiguration(Enum):
 class LLMModel(Enum):
     GPT_4 = "o4-mini"
     MOCK = "mock"
+
+class TranscriptData(BaseModel):
+    transcript_id : str
+    transcript_hash : str

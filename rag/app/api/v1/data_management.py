@@ -1,27 +1,25 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 
+from rag.app.db.connections import EmbeddingConnection
+from rag.app.dependencies import (
+    get_embedding_conn,
+    get_embedding_configuration,
+)
 from rag.app.exceptions import BaseAppException
+from rag.app.exceptions.upload import BaseUploadException
+from rag.app.models.data import SanityData
 from rag.app.schemas.data import (
     EmbeddingConfiguration,
 )
-
-from rag.app.db.connections import EmbeddingConnection, MetricsConnection
-from rag.app.dependencies import (
-    get_embedding_conn,
-    get_metrics_conn,
-    get_embedding_configuration,
-)
-from rag.app.schemas.requests import UploadRequest
 from rag.app.schemas.response import UploadResponse
-from rag.app.exceptions.upload import BaseUploadException
 
+from rag.app.services.data_upload_service import upload_document
 router = APIRouter()
-from rag.app.services.data_upload_service import pre_process_uploaded_document
 
 
-@router.post("/")
+@router.post("/create")
 async def upload_files(
-    upload_request: UploadRequest,
+    upload_request: SanityData,
     embedding_conn: EmbeddingConnection = Depends(get_embedding_conn),
     embedding_configuration: EmbeddingConfiguration = Depends(
         get_embedding_configuration
@@ -63,10 +61,7 @@ async def upload_files(
           For any unexpected server-side errors.
     """
     try:
-        embeddings = await pre_process_uploaded_document(
-            upload_request=upload_request,
-            embedding_configuration=embedding_configuration,
-        )
+        await upload_document(upload_request, embedding_conn,embedding_configuration)
 
     except BaseUploadException as e:
         raise HTTPException(
@@ -84,27 +79,27 @@ async def upload_files(
                 "message": str(e),
             },
         )
-    try:
-        res = await embedding_conn.insert(embeddings)
-    except BaseUploadException as e:
-        raise HTTPException(
-            status_code=500,
-            detail={
-                "message": str(e),
-                "code": e.code,
-            },
-        )
-    except Exception as e:
-        raise HTTPException(
-            status_code=500,
-            detail={
-                "message": str(e),
-                "code": BaseAppException.code,
-            },
-        )
-
-    if not res:
-        raise HTTPException(400)
     return UploadResponse(
-        message="Successfully uploaded files",
+        message="success"
     )
+
+@router.post("/update")
+async def update_files(
+    body: Request ,
+    embedding_conn: EmbeddingConnection = Depends(get_embedding_conn),
+    embedding_configuration: EmbeddingConfiguration = Depends(
+        get_embedding_configuration
+    ),
+):
+    print(await body.json())
+    return
+@router.post("/delete")
+async def delete_files(
+    body: Request,
+    embedding_conn: EmbeddingConnection = Depends(get_embedding_conn),
+    embedding_configuration: EmbeddingConfiguration = Depends(
+        get_embedding_configuration
+    ),
+):
+    print(await body.json())
+    return

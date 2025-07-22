@@ -1,12 +1,18 @@
-import httpx
 import logging
+import os
+import asyncio
+import certifi
+import httpx
+from dotenv import load_dotenv
+from motor.motor_asyncio import AsyncIOMotorClient
+
+from rag.app.db.mongodb_connection import MongoEmbeddingStore
+from rag.app.db.connections import EmbeddingConnection
+from rag.app.models.data import SanityData
+from rag.app.schemas.data import EmbeddingConfiguration, TranscriptData
+from rag.app.services.data_upload_service import upload_documents, update_documents
 
 logging.basicConfig(level=logging.INFO)
-
-from rag.app.db.connections import EmbeddingConnection, MetricsConnection
-from rag.app.schemas.data import EmbeddingConfiguration
-from rag.app.schemas.requests import UploadRequest
-from rag.app.services.data_upload_service import pre_process_uploaded_documents
 
 MANIFEST_URL = "https://the-rav-project.vercel.app/api/manifest"
 
@@ -23,7 +29,6 @@ async def post_data(payload=None):
 
 async def run(
     connection: EmbeddingConnection,
-    metrics_conn: MetricsConnection,
     embedding_configuration: EmbeddingConfiguration,
 ):
     logging.info("[run] Fetching manifest data...")
@@ -33,32 +38,58 @@ async def run(
         return
     logging.info(f"[run] Fetched {len(manifest)} manifest entries.")
 
-    unique_transcript_ids = await connection.get_all_unique_transcript_ids()
-    logging.info(
-        f"[run] Found {len(unique_transcript_ids)} unique transcript IDs in DB."
-    )
+    logging.info("[run] Fetching existing transcript IDs from DB...")
+    data: list[TranscriptData] = await connection.get_all_unique_transcript_ids()
+    transcript_map = {t.transcript_id: t.transcript_hash for t in data}
+    logging.info(f"[run] Found {len(data)} unique transcript IDs in DB.")
 
-    documents_needed_to_be_uploaded: list[UploadRequest] = []
+    documents_needed_to_be_uploaded: list[SanityData] = []
+    documents_needed_to_be_updated: list[SanityData] = []
 
+    logging.info("[run] Comparing manifest to database records...")
     for doc_id, content in manifest.items():
-        if doc_id not in unique_transcript_ids:
+        if doc_id not in transcript_map:
             logging.info(f"[run] New document found: {doc_id}")
-            documents_needed_to_be_uploaded.append(UploadRequest(id=doc_id, **content))
+            documents_needed_to_be_uploaded.append(SanityData(id=doc_id, **content))
+        elif transcript_map[doc_id] != content.get("hash"):
+            logging.info(f"[run] Updated hash detected for: {doc_id}")
+            documents_needed_to_be_updated.append(SanityData(id=doc_id, **content))
 
-    if not documents_needed_to_be_uploaded:
-        logging.info("[run] No new documents to upload.")
-        return
+    logging.info(f"[run] {len(documents_needed_to_be_uploaded)} documents need to be uploaded.")
+    logging.info(f"[run] {len(documents_needed_to_be_updated)} documents need to be updated.")
 
-    logging.info(
-        f"[run] Preparing to upload {len(documents_needed_to_be_uploaded)} documents..."
-    )
+    if documents_needed_to_be_uploaded:
+        logging.info("[run] Uploading new documents...")
+        await upload_documents(documents_needed_to_be_uploaded, connection, embedding_configuration)
+        logging.info("[run] Finished uploading new documents.")
 
-    for upload_request in documents_needed_to_be_uploaded:
-        logging.info(f"[run] Processing document: {upload_request.id}")
-        document_embedding = await pre_process_uploaded_documents(
-            upload_request=upload_request,
-            metrics_conn=metrics_conn,
-            embedding_configuration=embedding_configuration,
+    if documents_needed_to_be_updated:
+        logging.info("[run] Updating modified documents...")
+        await update_documents(documents_needed_to_be_updated, connection, embedding_configuration)
+        logging.info("[run] Finished updating modified documents.")
+
+    logging.info("[run] Processing complete.")
+
+
+if __name__ == "__main__":
+    async def main():
+        load_dotenv()
+        mongo_uri = os.getenv("MONGODB_URI")
+        client = AsyncIOMotorClient(
+            mongo_uri, tlsCAFile=certifi.where(), maxPoolSize=50
         )
-        await connection.insert(document_embedding)
-        logging.info(f"[run] Inserted embedding for: {upload_request.id}")
+        mongodb_db_name = os.getenv("MONGODB_DB_NAME")
+        db = client[mongodb_db_name]
+        vector_embedding_collection_name = os.getenv("MONGODB_VECTOR_COLLECTION")
+        vector_embedding_collection = db[vector_embedding_collection_name]
+        collection_index = os.getenv("COLLECTION_INDEX")
+        vector_path = "vector"
+        mongo_connection = MongoEmbeddingStore(
+            collection=vector_embedding_collection,
+            index=collection_index,
+            vector_path=vector_path,
+        )
+        embedding_configuration = EmbeddingConfiguration.GEMINI
+        await run(connection=mongo_connection, embedding_configuration=embedding_configuration)
+
+    asyncio.run(main())

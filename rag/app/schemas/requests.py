@@ -1,6 +1,8 @@
 from pydantic import BaseModel, HttpUrl, field_validator, Field
 from enum import Enum, auto
 
+from rag.app.models.data import SanityData
+
 
 class TypeOfRequest(str, Enum):
     STREAM = "STREAM"
@@ -25,16 +27,4 @@ class ChatRequest(BaseModel):
             return v
 
 
-class UploadRequest(BaseModel):
-    id: str
-    _updatedAt: str
-    slug: str
-    title: str
-    transcriptURL: HttpUrl
 
-    @classmethod
-    @field_validator("transcriptURL")
-    def must_be_srt(cls, v):
-        if not str(v).lower().endswith(".srt"):
-            raise ValueError("transcriptURL must end with .srt")
-        return v

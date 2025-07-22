@@ -13,6 +13,16 @@ class SanityData(BaseModel):
     slug: str
     title: str
     transcriptURL: HttpUrl
+    hash: str
+    def to_dict(self) -> dict:
+        return {
+            "id": self.id,
+            "slug": self.slug,
+            "title": self.title,
+            "transcriptURL": str(self.transcriptURL),
+            "hash": self.hash,
+        }
+
 
 
 class DocumentModel(BaseModel):

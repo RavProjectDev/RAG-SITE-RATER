@@ -4,6 +4,7 @@ from typing import List, Dict, Any
 from rag.app.schemas.data import VectorEmbedding
 from rag.app.models.data import DocumentModel
 from contextlib import asynccontextmanager
+from rag.app.schemas.data import TranscriptData
 
 
 class EmbeddingConnection(ABC):
@@ -32,7 +33,10 @@ class EmbeddingConnection(ABC):
         pass
 
     @abstractmethod
-    async def get_all_unique_transcript_ids(self) -> list[str]:
+    async def get_all_unique_transcript_ids(self) -> list[TranscriptData]:
+        pass
+    @abstractmethod
+    async def delete_document(self,transcript_id: str) -> bool :
         pass
 
 

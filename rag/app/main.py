@@ -8,7 +8,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 
 from rag.app.api.v1.chat import router as chat_router
-from rag.app.api.v1.upload import router as upload_router
+from rag.app.api.v1.data_management import router as upload_router
 from rag.app.api.v1.health import router as health_router
 from rag.app.api.v1.docs import router as docs_router
 from rag.app.api.v1.mock import router as mock_router

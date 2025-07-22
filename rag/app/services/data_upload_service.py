@@ -1,5 +1,6 @@
 import httpx
 
+from rag.app.db.connections import EmbeddingConnection
 from rag.app.exceptions.upload import SRTFileNotFound
 from rag.app.services.preprocess.transcripts import preprocess_raw_transcripts
 from rag.app.schemas.data import (
@@ -10,19 +11,16 @@ from rag.app.schemas.data import (
     SanityData,
 )
 from rag.app.services.embedding import generate_embedding
-from rag.app.db.connections import EmbeddingConnection, MetricsConnection
-from rag.app.schemas.requests import UploadRequest
 
 
-async def pre_process_uploaded_documents(
-    upload_request: UploadRequest,
-    metrics_conn: MetricsConnection,
+async def pre_process_uploaded_document(
+    upload_request: SanityData,
     embedding_configuration: EmbeddingConfiguration,
 ) -> list[VectorEmbedding]:
     contents = await fetch_transcript(str(upload_request.transcriptURL))
     chunks = process_transcript_contents(upload_request.title, contents)
     embeddings = await generate_all_embeddings(
-        chunks, embedding_configuration, metrics_conn, upload_request
+        chunks, embedding_configuration, upload_request
     )
     return embeddings
 
@@ -43,25 +41,23 @@ def process_transcript_contents(title: str, raw_text: str) -> list[Chunk]:
 async def generate_all_embeddings(
     chunks: list[Chunk],
     configuration: EmbeddingConfiguration,
-    metrics_connection: MetricsConnection,
-    upload_request: UploadRequest,
+    upload_request: SanityData,
 ) -> list[VectorEmbedding]:
+
     sanity_data = SanityData(**upload_request.model_dump())
     return await embedding_helper(
-        chunks, configuration, metrics_connection, sanity_data
+        chunks, configuration, sanity_data
     )
 
 
 async def embedding_helper(
     chunks: list[Chunk],
     configuration: EmbeddingConfiguration,
-    metrics_connection: MetricsConnection,
     sanity_data: SanityData,
 ) -> list[VectorEmbedding]:
     embeddings = []
     for chunk in chunks:
         data: Embedding = await generate_embedding(
-            metrics_connection=metrics_connection,
             text=chunk.text,
             configuration=configuration,
         )
@@ -74,3 +70,48 @@ async def embedding_helper(
             )
         )
     return embeddings
+
+
+
+async def upload_documents(
+    documents: list[SanityData],
+    connection: EmbeddingConnection,
+    embedding_configuration: EmbeddingConfiguration
+):
+    for doc in documents:
+        await upload_document(doc, connection, embedding_configuration)
+
+async def upload_document(
+    doc: SanityData,
+    connection: EmbeddingConnection,
+    embedding_configuration: EmbeddingConfiguration
+):
+    embedding = await pre_process_uploaded_document(
+        upload_request=doc,
+        embedding_configuration=embedding_configuration,
+    )
+    await connection.insert(embedding)
+
+async def update_documents(
+    documents: list[SanityData],
+    connection: EmbeddingConnection,
+    embedding_configuration: EmbeddingConfiguration
+):
+    for doc in documents:
+        deleted = await delete_document(doc.transcript_id, connection)
+        if not deleted:
+            continue
+        await upload_document(doc, connection, embedding_configuration)
+
+async def delete_documents(
+    documents: list[SanityData],
+    connection: EmbeddingConnection
+):
+    for doc in documents:
+        await delete_document(doc.transcript_id, connection)
+
+async def delete_document(
+    document_id: str,
+    connection: EmbeddingConnection
+) -> bool:
+    return await connection.delete_document(document_id)
