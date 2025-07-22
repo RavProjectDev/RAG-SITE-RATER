@@ -16,14 +16,13 @@ from rag.app.schemas.response import UploadResponse
 from rag.app.exceptions.upload import BaseUploadException
 
 router = APIRouter()
-from rag.app.services.data_upload_service import pre_process_uploaded_documents
+from rag.app.services.data_upload_service import pre_process_uploaded_document
 
 
 @router.post("/")
 async def upload_files(
     upload_request: UploadRequest,
     embedding_conn: EmbeddingConnection = Depends(get_embedding_conn),
-    metrics_conn: MetricsConnection = Depends(get_metrics_conn),
     embedding_configuration: EmbeddingConfiguration = Depends(
         get_embedding_configuration
     ),
@@ -64,9 +63,8 @@ async def upload_files(
           For any unexpected server-side errors.
     """
     try:
-        embeddings = await pre_process_uploaded_documents(
+        embeddings = await pre_process_uploaded_document(
             upload_request=upload_request,
-            metrics_conn=metrics_conn,
             embedding_configuration=embedding_configuration,
         )
 
