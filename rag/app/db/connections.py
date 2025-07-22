@@ -1,7 +1,8 @@
 import time
 from abc import ABC, abstractmethod
 from typing import List, Dict, Any
-from rag.app.schemas.data import VectorEmbedding, Document
+from rag.app.schemas.data import VectorEmbedding
+from rag.app.models.data import DocumentModel
 from contextlib import asynccontextmanager
 
 
@@ -12,7 +13,7 @@ class EmbeddingConnection(ABC):
     """
 
     @abstractmethod
-    async def insert(self, embedded_data: List[VectorEmbedding]) -> list[Document]:
+    async def insert(self, embedded_data: List[VectorEmbedding]) -> list[DocumentModel]:
         """
         Inserts one vector to the database.
         :param embedded_data:
@@ -28,6 +29,10 @@ class EmbeddingConnection(ABC):
         """
         Retrieves documents based on vector
         """
+        pass
+
+    @abstractmethod
+    async def get_all_unique_transcript_ids(self) -> list[str]:
         pass
 
 
@@ -48,3 +53,9 @@ class MetricsConnection(ABC):
             duration = time.perf_counter() - start
             data_with_duration = {**data, "duration": f"{duration:.4f}"}
             await self.log(metric_type, data_with_duration)
+
+
+class ExceptionsLogger(ABC):
+    @abstractmethod
+    async def log(self, exception_code: str | None, data: Dict[str, Any]):
+        pass

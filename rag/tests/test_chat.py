@@ -1,9 +1,11 @@
 import pytest
 
+from rag.app.schemas.data import Document
+
 pytestmark = pytest.mark.asyncio
 from httpx import AsyncClient, ASGITransport
 from asgi_lifespan import LifespanManager
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch, MagicMock, AsyncMock
 from rag.app.main import app
 from rag.app.schemas.requests import ChatRequest, TypeOfRequest
 
@@ -34,28 +36,48 @@ def patch_get_settings(monkeypatch):
 @patch("rag.app.api.v1.chat.get_llm_response", return_value="Mocked response")
 @patch("rag.app.api.v1.chat.pre_process_user_query", return_value="Processed")
 @patch("rag.app.api.v1.chat.generate_embedding")
-async def test_chat_handler(mock_embed, mock_preprocess, mock_llm):
-    mock_embed.return_value.vector = [0.1] * 784
+async def test_chat_handler(
+    mock_generate_embedding, mock_preprocess, mock_llm_response
+):
+    # Setup mock embedding
+    mock_generate_embedding.return_value = MagicMock(vector=[0.1] * 784)
 
-    # override dependencies
+    # Setup mock DB connection with mock retrieve
     mock_conn = MagicMock()
-    mock_conn.retrieve.return_value = []
-
-    app.dependency_overrides = {}
-    payload = ChatRequest(
-        question="What is Torah?", type_of_request=TypeOfRequest.FULL.value
+    mock_conn.retrieve = AsyncMock(
+        return_value=[
+            Document(
+                text="Test document",
+                metadata={
+                    "name_space": "mock",
+                    "id": "123",
+                    "chunk_size": 100,
+                    "time_start": "00:00",
+                    "time_end": "00:10",
+                },
+            )
+        ]
     )
-    async with LifespanManager(app):
-        transport = ASGITransport(app=app)  # pass your FastAPI app here
-        async with AsyncClient(transport=transport, base_url="http://test") as client:
-            response = await client.post("/api/v1/chat/", json=payload.model_dump())
-            print(response.json())
-            assert response.status_code == 200
-            response = await client.post("/api/v1/chat/", json=payload.model_dump())
-            assert response.status_code == 200
-            body = response.json()
-            assert body["message"] == "Mocked response"
-            assert isinstance(body["metadatas"], list)
+
+    # Create a ChatRequest
+    chat_request = ChatRequest(
+        question="What is Torah?", type_of_request=TypeOfRequest.FULL
+    )
+
+    # Call the handler directly
+    from rag.app.api.v1 import chat
+
+    result = await chat.handler(
+        chat_request=chat_request,
+        request=MagicMock(),
+        embedding_conn=mock_conn,
+        metrics_conn=MagicMock(),
+        embedding_configuration=MagicMock(),
+        llm_configuration=MagicMock(value="mock-model"),
+    )
+
+    assert result.message == "Mocked response"
+    assert len(result.metadatas) == 1
 
 
 @pytest.mark.asyncio
@@ -78,9 +100,6 @@ async def test_chat_fail(mock_embed, mock_preprocess, mock_llm):
         async with AsyncClient(transport=transport, base_url="http://test") as client:
             response = await client.post("/api/v1/chat/", json=payload.model_dump())
 
-            assert response.status_code == 200
+            assert response.status_code == 502
             response = await client.post("/api/v1/chat/", json=payload.model_dump())
-            assert response.status_code == 200
-            body = response.json()
-            assert body["message"] == "Mocked response"
-            assert isinstance(body["metadatas"], list)
+            assert response.status_code == 502

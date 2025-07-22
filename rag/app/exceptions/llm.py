@@ -3,7 +3,7 @@ from rag.app.exceptions.base import BaseAppException
 
 class LLMBaseException(BaseAppException):
     status_code: int = 500
-    code: str = "embedding_error"
+    code: str = "llm_error"
     description: str = "General LLM embedding error."
 
     def __init__(self, message: str | None = None):
@@ -11,19 +11,13 @@ class LLMBaseException(BaseAppException):
         super().__init__(self.message)
 
 
-class LLMConnectionBaseException(LLMBaseException):
+class LLMConnectionException(LLMBaseException):
     status_code: int = 500
-    code: str = "embedding_connection_error"
-    description: str = "LLM embedding connection error."
+    code: str = "llm_error_connection_exception"
+    description: str = "Problem establishing connection with LLM Client API"
 
 
-class LLMTimeoutBaseException(LLMBaseException):
+class LLMTimeoutException(LLMBaseException):
     status_code: int = 500
-    code: str = "timeout_error"
+    code: str = "llm_timeout_error"
     description: str = "LLM request timed out."
-
-
-class LLMRequestBaseException(LLMBaseException):
-    status_code: int = 500
-    code: str = "request_error"
-    description: str = "LLM request error."

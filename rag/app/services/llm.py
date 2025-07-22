@@ -5,16 +5,17 @@ from openai.types.chat import (
 )
 
 import asyncio
+import logging
 
 
 from rag.app.db.connections import MetricsConnection
-from rag.app.schemas.data import LLMModel, Document
+from rag.app.schemas.data import LLMModel
+from rag.app.models.data import DocumentModel
 
 from rag.app.exceptions.llm import (
     LLMBaseException,
-    LLMConnectionBaseException,
-    LLMTimeoutBaseException,
-    LLMRequestBaseException,
+    LLMTimeoutException,
+    LLMConnectionException,
 )
 from functools import lru_cache
 from openai import (
@@ -33,11 +34,11 @@ def get_openai_client() -> AsyncOpenAI:
     try:
         settings = get_settings()
     except (AttributeError, KeyError, TypeError) as e:
-        raise LLMConnectionBaseException("Failed to get data from settings")
+        raise LLMBaseException("Failed to get data from settings")
     try:
         return AsyncOpenAI(api_key=settings.openai_api_key)
     except (OpenAIError, AuthenticationError) as e:
-        raise LLMBaseException("OpenAI API connection failed: {}".format(e))
+        raise LLMConnectionException("OpenAI API connection failed: {}".format(e))
 
 
 # ---------------------------------------------------------------
@@ -56,7 +57,13 @@ async def get_llm_response(
     data = {}
     async with metrics_connection.timed(metric_type="LLM", data=data):
         if model == LLMModel.GPT_4:
-            response, metrics = await get_gpt_response(prompt=prompt, model=model.value)
+            try:
+                response, metrics = await get_gpt_response(
+                    prompt=prompt, model=model.value
+                )
+            except Exception as e:
+                logging.error(f"Error in get_gpt_response: {e}")
+                raise
         elif model == LLMModel.MOCK:
             response, metrics = get_mock_response()
         else:
@@ -95,7 +102,7 @@ async def get_gpt_response(
                 messages=messages,
             )
         except OpenAIError as e:
-            raise LLMRequestBaseException(f"Failed to get data from OpenAI: {e}")
+            raise LLMBaseException(f"Failed to get data from OpenAI: {e}")
 
         usage = response.usage
         prompt_tokens = usage.prompt_tokens
@@ -117,6 +124,7 @@ async def get_gpt_response(
         return result, metrics
 
     except Exception as e:
+        logging.error(f"Error in get_gpt_response: {e}")
         raise
 
 
@@ -192,17 +200,17 @@ async def stream_llm_response(
 
         yield "[DONE]"
     except asyncio.TimeoutError:
-        raise LLMTimeoutBaseException(
+        raise LLMTimeoutException(
             f"LLM call timed out after {settings.external_api_timeout} seconds"
         )
     except AuthenticationError:
-        raise LLMRequestBaseException("Invalid OpenAI API key")
+        raise LLMConnectionException("Invalid OpenAI API key")
     except RateLimitError:
-        raise LLMRequestBaseException("OpenAI rate limit exceeded")
+        raise LLMConnectionException("OpenAI rate limit exceeded")
     except APIConnectionError:
-        raise LLMConnectionBaseException("Failed to connect to OpenAI API")
+        raise LLMConnectionException("Failed to connect to OpenAI API")
     except APIError as e:
-        raise LLMRequestBaseException(f"OpenAI API error: {str(e)}")
+        raise LLMConnectionException(f"OpenAI API error: {str(e)}")
     except Exception as e:
         raise LLMBaseException(f"Unexpected error: {str(e)}")
 
@@ -219,7 +227,7 @@ async def stream_llm_response(
 
 def generate_prompt(
     user_question: str,
-    data: list[Document],
+    data: list[DocumentModel],
     max_tokens: int = 1500,
 ) -> str:
     """
@@ -234,7 +242,9 @@ def generate_prompt(
 
     for doc in data:
         quote = doc.text.strip()
-        metadata_str = ", ".join(f"{k}: {v}" for k, v in doc.metadata.items())
+        metadata_str = ", ".join(
+            f"{k}: {v}" for k, v in doc.metadata.model_dump().items()
+        )
 
         entry = f'"{quote}"\n(Source: {metadata_str})'
         tokens = estimate_tokens(entry)

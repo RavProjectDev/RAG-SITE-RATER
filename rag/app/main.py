@@ -12,9 +12,14 @@ from rag.app.api.v1.upload import router as upload_router
 from rag.app.api.v1.health import router as health_router
 from rag.app.api.v1.docs import router as docs_router
 from rag.app.api.v1.mock import router as mock_router
-from rag.app.db.connections import MetricsConnection
-from rag.app.db.mongodb_connection import MongoEmbeddingStore, MongoMetricsConnection
+from rag.app.db.connections import MetricsConnection, ExceptionsLogger
+from rag.app.db.mongodb_connection import (
+    MongoEmbeddingStore,
+    MongoMetricsConnection,
+    MongoExceptionsLogger,
+)
 from rag.app.core.config import get_settings, Environment
+from rag.app.core.scheduler import start_scheduler
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
@@ -23,23 +28,38 @@ logging.basicConfig(level=logging.INFO)
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     settings = get_settings()
+    client = AsyncIOMotorClient(
+        settings.mongodb_uri, tlsCAFile=certifi.where(), maxPoolSize=50
+    )
     try:
-        client = AsyncIOMotorClient(
-            settings.mongodb_uri, tlsCAFile=certifi.where(), maxPoolSize=50
-        )
         db = client[settings.mongodb_db_name]
         vector_embedding_collection = db[settings.mongodb_vector_collection]
         metrics_collection = db[settings.metrics_collection]
+        exceptions_collection = db[settings.exceptions_collection]
 
-        app.state.mongo_conn = MongoEmbeddingStore(
+        mongo_connection = MongoEmbeddingStore(
             collection=vector_embedding_collection,
             index=settings.collection_index,
             vector_path=settings.vector_path,
         )
-        app.state.metrics_connection = MongoMetricsConnection(
+        metrics_connection = MongoMetricsConnection(
             collection=metrics_collection,
         )
+        exceptions_logger = MongoExceptionsLogger(
+            collection=exceptions_collection,
+        )
+
+        app.state.mongo_conn = mongo_connection
+        app.state.metrics_connection = metrics_connection
+        app.state.exceptions_logger = exceptions_logger
+        app.state.db_client = db
+        start_scheduler(
+            connection=mongo_connection,
+            metrics_conn=metrics_connection,
+            embedding_configuration=settings.embedding_configuration,
+        )
         yield
+
     except Exception as e:
         logger.error(f"Failed to initialize MongoDB: {e}")
         raise
@@ -67,18 +87,22 @@ async def log_requests(request: Request, call_next):
     start = time.perf_counter()
     response = await call_next(request)
     duration = time.perf_counter() - start
-
-    if response.status_code in (200, 500) and hasattr(
-        request.app.state, "metrics_connection"
-    ):
+    data = {
+        "endpoint": request.url.path,
+        "method": request.method,
+        "status_code": response.status_code,
+        "duration": duration,  # Store as float
+    }
+    if response.status_code == 200:
         metrics_connection: MetricsConnection = request.app.state.metrics_connection
-        data = {
-            "endpoint": request.url.path,
-            "method": request.method,
-            "status_code": response.status_code,
-            "duration": duration,  # Store as float
-        }
         await metrics_connection.log(metric_type="endpoint_timing", data=data)
+    else:
+        exceptions_logger: ExceptionsLogger = request.app.state.exceptions_logger
+        await exceptions_logger.log(
+            exception_code=None,
+            data=data,
+        )
+        logger.info(f"{request.method} {request.url.path} completed in {duration:.4f}s")
     logger.info(f"{request.method} {request.url.path} completed in {duration:.4f}s")
     return response
 

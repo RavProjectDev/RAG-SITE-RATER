@@ -1,12 +1,11 @@
 import json
 import pysrt
-import uuid
 from rag.app.schemas.data import Chunk, TypeOfFormat
-from rag.app.core.config import get_settings
-from logging import getLogger
+import logging
 from rag.app.services.preprocess.constants import CHUNKING_SIZE
 
-logger = getLogger(__name__)
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 
 def build_chunk(subs, word_count, name_space) -> Chunk:
@@ -23,7 +22,6 @@ def build_chunk(subs, word_count, name_space) -> Chunk:
     chunk_text = " ".join(s.text.replace("\n", " ") for s in subs)
 
     chunk = Chunk(
-        id=uuid.uuid4(),
         time_start=str(start),
         time_end=str(end),
         text=chunk_text,
@@ -81,7 +79,6 @@ def chunk_txt(content: tuple[str, str]) -> list[Chunk]:
         chunk_text = " ".join(chunk_words)
 
         chunk = Chunk(
-            id=uuid.uuid4(),
             name_space=file_name,
             text=chunk_text,
             chunk_size=len(chunk_words),

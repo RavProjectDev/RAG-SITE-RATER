@@ -1,4 +1,11 @@
-from google.auth import default
+import concurrent.futures
+import logging
+import random
+from dataclasses import dataclass
+from functools import lru_cache
+from typing import List
+
+import vertexai
 from google.api_core.exceptions import (
     GoogleAPIError,
     InvalidArgument,
@@ -6,17 +13,13 @@ from google.api_core.exceptions import (
     PermissionDenied,
     Unauthenticated,
 )
-import vertexai
+from google.auth import default
 from vertexai.language_models import TextEmbeddingInput, TextEmbeddingModel
-from rag.app.schemas.data import EmbeddingConfiguration, Embedding
-from functools import lru_cache
+
 from rag.app.core.config import get_settings
 from rag.app.db.connections import MetricsConnection
-import random
 from rag.app.exceptions.embedding import *
-import concurrent.futures
-from typing import List
-from dataclasses import dataclass
+from rag.app.schemas.data import EmbeddingConfiguration, Embedding
 
 # Constants
 DEFAULT_EMBEDDING_DIMENSIONALITY = 784
@@ -120,7 +123,6 @@ def generate_mock_embedding(text: str) -> List[float]:
 
 
 async def generate_embedding(
-    metrics_connection: MetricsConnection,
     text: str,
     configuration: EmbeddingConfiguration,
 ) -> Embedding:
@@ -142,20 +144,18 @@ async def generate_embedding(
     if not text:
         raise EmbeddingException("Text cannot be empty for embedding generation")
 
-    data = {"embedding_type": configuration.value}
-    async with metrics_connection.timed(metric_type="embedding", data=data):
-        try:
-            if configuration == EmbeddingConfiguration.GEMINI:
-                vector = await gemini_embedding(text)
-            elif configuration == EmbeddingConfiguration.MOCK:
-                vector = generate_mock_embedding(text)
-            else:
-                raise EmbeddingConfigurationException(
-                    f"Unsupported embedding configuration: {configuration.name}"
-                )
+    try:
+        if configuration == EmbeddingConfiguration.GEMINI:
+            vector = await gemini_embedding(text)
+        elif configuration == EmbeddingConfiguration.MOCK:
+            vector = generate_mock_embedding(text)
+        else:
+            raise EmbeddingConfigurationException(
+                f"Unsupported embedding configuration: {configuration.name}"
+            )
 
-            return Embedding(text=text, vector=vector)
+        return Embedding(text=text, vector=vector)
 
-        except Exception as e:
-            # TODO: add logging for errors.
-            raise
+    except Exception as e:
+        logging.error(f"Error in generate_embedding: {e}")
+        raise

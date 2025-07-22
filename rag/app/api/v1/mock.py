@@ -36,7 +36,7 @@ async def stream(request: ChatRequest) -> ChatResponse:
         }
     ]
 
-    return ChatResponse(message=message, metadatas=metadatas)
+    return ChatResponse(message=message, metadata=metadatas)
 
 
 @router.post("/stream")

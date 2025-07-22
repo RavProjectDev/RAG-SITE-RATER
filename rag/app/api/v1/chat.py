@@ -1,28 +1,11 @@
-import uuid
-from fastapi import APIRouter, Request, HTTPException, Depends
-from fastapi.responses import StreamingResponse
-import json
 import asyncio
+import json
+import uuid
+
+from fastapi import APIRouter, HTTPException, Depends
+from fastapi.responses import StreamingResponse
 from starlette import status
 
-from rag.app.exceptions.base import BaseAppException
-from rag.app.exceptions.db import DataBaseException, NoDocumentFoundException
-from rag.app.exceptions.embedding import (
-    EmbeddingConfigurationException,
-    EmbeddingException,
-    EmbeddingTimeOutException,
-    EmbeddingAPIException,
-)
-from rag.app.exceptions.validation import InputValidationError
-from rag.app.exceptions.llm import (
-    LLMBaseException,
-)
-from rag.app.schemas.requests import ChatRequest, TypeOfRequest
-from rag.app.schemas.response import ChatResponse
-from rag.app.services.llm import stream_llm_response, generate_prompt, get_llm_response
-from rag.app.services.preprocess.user_input import pre_process_user_query
-from rag.app.services.embedding import generate_embedding
-from rag.app.schemas.data import Document, EmbeddingConfiguration, LLMModel
 from rag.app.core.config import get_settings
 from rag.app.db.connections import EmbeddingConnection, MetricsConnection
 from rag.app.dependencies import (
@@ -31,6 +14,24 @@ from rag.app.dependencies import (
     get_embedding_configuration,
     get_llm_configuration,
 )
+from rag.app.exceptions.base import BaseAppException
+from rag.app.exceptions.db import DataBaseException, NoDocumentFoundException
+from rag.app.exceptions.embedding import (
+    EmbeddingConfigurationException,
+    EmbeddingException,
+    EmbeddingTimeOutException,
+    EmbeddingAPIException,
+)
+from rag.app.exceptions.llm import (
+    LLMBaseException,
+)
+from rag.app.models.data import DocumentModel
+from rag.app.schemas.data import EmbeddingConfiguration, LLMModel
+from rag.app.schemas.requests import ChatRequest, TypeOfRequest
+from rag.app.schemas.response import ChatResponse, TranscriptData
+from rag.app.services.embedding import generate_embedding
+from rag.app.services.llm import stream_llm_response, generate_prompt, get_llm_response
+from rag.app.services.preprocess.user_input import pre_process_user_query
 
 router = APIRouter()
 
@@ -41,7 +42,6 @@ router = APIRouter()
 )
 async def handler(
     chat_request: ChatRequest,
-    request: Request,
     embedding_conn: EmbeddingConnection = Depends(get_embedding_conn),
     metrics_conn: MetricsConnection = Depends(get_metrics_conn),
     embedding_configuration: EmbeddingConfiguration = Depends(
@@ -54,7 +54,6 @@ async def handler(
 
     Args:
         chat_request: The validated chat request model.
-        request: The FastAPI request object.
         embedding_conn: Database connection for embeddings.
         metrics_conn: Connection for logging metrics.
         embedding_configuration: Configuration for generating embeddings.
@@ -70,10 +69,9 @@ async def handler(
 
     try:
         # Generate prompt and metadata
-        prompt, metadata = await asyncio.wait_for(
+        prompt, transcript_data = await asyncio.wait_for(
             generate(
                 chat_request=chat_request,
-                request=request,
                 embedding_configuration=embedding_configuration,
                 connection=embedding_conn,
                 metrics_connection=metrics_conn,  # Pass metrics_conn for logging
@@ -84,7 +82,8 @@ async def handler(
 
             async def event_generator():
                 """Asynchronous generator for Server-Sent Events (SSE)."""
-                yield f"data: {json.dumps({'metadata': metadata})}\n\n"
+                yield f"data: {json.dumps({
+                    'transcript_data': transcript_data})}\n\n"
                 async for chunk in stream_llm_response(
                     metrics_connection=metrics_conn,
                     prompt=prompt,
@@ -102,7 +101,7 @@ async def handler(
                     prompt=prompt,
                     model=llm_configuration,
                 )
-                return ChatResponse(message=llm_response, metadatas=metadata)
+                return ChatResponse(message=llm_response,transcript_data=transcript_data)
 
         return await full_response()
     except asyncio.TimeoutError:
@@ -110,8 +109,9 @@ async def handler(
             status_code=status.HTTP_408_REQUEST_TIMEOUT,
             detail="Timeout while waiting for chat request",
         )
+
     except NoDocumentFoundException as e:
-        return ChatResponse(metadatas=[], message=e.message_to_ui)
+        return ChatResponse(message=e.message_to_ui,transcript_data=[])
     except BaseAppException as e:
         raise HTTPException(
             status_code=e.status_code, detail={"code": e.code, "error": e.message}
@@ -121,10 +121,8 @@ async def handler(
             status_code=500, detail={"code": "internal_server_error", "message": str(e)}
         )
 
-
 async def generate(
     chat_request: ChatRequest,
-    request: Request,
     embedding_configuration: EmbeddingConfiguration,
     connection: EmbeddingConnection,
     metrics_connection: MetricsConnection,
@@ -134,7 +132,6 @@ async def generate(
 
     Args:
         chat_request: The validated chat request model.
-        request: The FastAPI request object.
         embedding_configuration: Configuration for generating embeddings.
         connection: Database connection for retrieving documents.
         metrics_connection: Connection for logging metrics.
@@ -151,15 +148,6 @@ async def generate(
     request_id = uuid.uuid4().hex
     user_question: str = chat_request.question
 
-    if not user_question.strip():
-        raise InputValidationError("Question is empty.")
-    if not isinstance(embedding_configuration, EmbeddingConfiguration):
-        raise InputValidationError("Invalid embedding configuration")
-    if not isinstance(connection, EmbeddingConnection):
-        raise InputValidationError("Invalid embedding connection")
-    if not isinstance(metrics_connection, MetricsConnection):
-        raise InputValidationError("Invalid metrics connection")
-
     # Preprocess question
     cleaned_question = pre_process_user_query(user_question)
 
@@ -170,7 +158,6 @@ async def generate(
     ):
         try:
             embedding = await generate_embedding(
-                metrics_connection=metrics_connection,
                 text=cleaned_question,
                 configuration=embedding_configuration,
             )
@@ -181,7 +168,7 @@ async def generate(
             EmbeddingAPIException,
             EmbeddingTimeOutException,
         ) as e:
-            raise
+            raise e
         except Exception as e:
             raise EmbeddingException(f"Unexpected embedding error: {str(e)}")
 
@@ -192,10 +179,8 @@ async def generate(
 
     # Retrieve matching documents with metrics logging
     vector: list[float] = embedding.vector
-    data: list[Document] = []
-    async with metrics_connection.timed(
-        metric_type="RETRIEVAL", data={"request_id": request_id}
-    ):
+    data: list[DocumentModel] = []
+    async with metrics_connection.timed(metric_type="RETRIEVAL", data={"request_id": request_id}):
         try:
             data = await connection.retrieve(
                 embedded_data=vector, name_spaces=chat_request.name_spaces
@@ -205,11 +190,19 @@ async def generate(
         except Exception as e:
             raise DataBaseException(f"Database retrieval failed: {str(e)}")
 
-    # Generate prompt
     try:
         prompt = generate_prompt(cleaned_question, data)
-        return prompt, [datum.metadata for datum in data]
-    except (LLMBaseException, InputValidationError) as e:
-        raise
+    except LLMBaseException as e:
+        raise e
     except Exception as e:
-        raise LLMBaseException(f"Prompt generation failed: {str(e)}")
+        raise LLMBaseException(str(e))
+    transcript_data : list[TranscriptData] = []
+    for datum in data:
+        transcript_data.append(
+            TranscriptData(
+                sanity_data=datum.sanity_data,
+                metadata=datum.metadata,
+            )
+        )
+
+    return prompt,transcript_data

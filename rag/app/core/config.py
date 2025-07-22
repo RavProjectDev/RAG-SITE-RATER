@@ -27,6 +27,7 @@ class Settings(BaseSettings):
     external_api_timeout: int = 60
     metrics_collection: str = "metrics"
     environment: Environment = Environment.PRD
+    exceptions_collection: str = "exceptions"
     model_config = {"env_file": ".env"}
 
 
