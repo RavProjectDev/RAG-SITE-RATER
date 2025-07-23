@@ -1,10 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { MAIN_URL } from '@/lib/utils';
 
 export async function POST(req: NextRequest) {
-  // Parse ratings from the request body
-  const { ratings } = await req.json();
+  const { user_question, document } = await req.json();
+  // Forward to FastAPI
+  const response = await fetch(`${MAIN_URL}/form/upload_ratings`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      "user_question": user_question,
+      "data": document
+    }),
+  });
 
-  // In a real app, you would store ratings here
-  // For mock, just return success
-  return NextResponse.json({ success: true });
+  const data = await response.json();
+  return NextResponse.json(data);
 } 

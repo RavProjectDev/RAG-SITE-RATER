@@ -2,8 +2,7 @@
 import { useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
+import { questions } from "@/data/questions";
 
 // Rating component for 0–100 using a number input (clicker)
 function Rating({ value, onChange }: { value: number; onChange: (v: number) => void }) {
@@ -44,11 +43,28 @@ function Rating({ value, onChange }: { value: number; onChange: (v: number) => v
     </div>
   );
 }
-
+type Chunk = {
+  _id: string;
+  text: string;
+  metadata: {
+    chunk_size: number;
+    time_start: string;
+    time_end: string;
+    name_space: string;
+  };
+  sanity_data: {
+    id: string;
+    slug: string;
+    title: string;
+    transcriptURL: string;
+    hash: string;
+  };
+  score: number;
+};
 export default function Home() {
   // App state
   const [question, setQuestion] = useState("");
-  const [chunks, setChunks] = useState<{ id: string; content: string }[]>([]);
+  const [chunks, setChunks] = useState<Chunk[]>([]);
   const [ratings, setRatings] = useState<{ [id: string]: number }>({});
   const [step, setStep] = useState<"ask" | "rate" | "done">("ask");
   const [loading, setLoading] = useState(false);
@@ -70,7 +86,7 @@ export default function Home() {
       setRatings({});
       setStep("rate");
     } catch (err) {
-      setError("Failed to fetch chunks.");
+      setError("Failed to fetch chunks: " + err);
     } finally {
       setLoading(false);
     }
@@ -88,15 +104,15 @@ export default function Home() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          question, // include the question
-          ratings: chunks.map((chunk) => ({
-            chunkId: chunk.id,
-            rating: ratings[chunk.id] ?? 0,
-          })),
+          user_question: question,
+          document: chunks.map((chunk) => [
+            chunk, // full chunk object
+            ratings[chunk._id] ?? 0 // user rating
+          ]),
         }),
       });
     } catch (err) {
-      setError("Failed to upload ratings.");
+      setError("Failed to upload ratings: " + err);
       setStep("rate"); // Rollback
     } finally {
       setLoading(false);
@@ -110,23 +126,33 @@ export default function Home() {
         <h1 className="text-2xl font-bold mb-2 text-center">Chunk Rater</h1>
         {/* About Section */}
         {step === "ask" && (
-          <div className="mb-4 p-4 bg-muted/80 border rounded text-sm text-muted-foreground">
-            <h2 className="font-semibold mb-2 text-lg">About</h2>
-            <p>
-              Lorem ipsum dolor sit amet, consectetur adipiscing elit. Pellentesque euismod, urna eu tincidunt consectetur, nisi nisl aliquam nunc, eget aliquam massa nisl quis neque. Etiam vitae turpis euismod, ultricies quam in, eleifend massa. Integer non dictum erat. Suspendisse potenti.
+          <div className="mb-4 p-6 bg-yellow-50 border-l-8 border-yellow-400 rounded shadow-md text-base text-muted-foreground">
+            <h2 className="font-bold mb-3 text-2xl text-yellow-900">About</h2>
+            <p className="text-lg leading-relaxed text-yellow-900">
+              This platform is dedicated to exploring and evaluating text chunks extracted by a Retrieval-Augmented Generation system inspired by the teachings of Rabbi Joseph B. Soloveitchik, &quot;The Rav.&quot; Instead of full responses, you’ll engage with selected segments—chunks—derived from embedding his philosophical and halachic works as vectors.
+
+Your role is to rate how well each chunk captures the meaning and nuance of the Rav’s original teachings. This feedback is crucial for testing and improving the embedding strategy and model accuracy in representing the Rav’s transcripts.
+
+Whether you are a scholar, student, or admirer, your participation helps refine this system’s ability to faithfully reflect the Rav’s wisdom through vector embeddings. Thank you for contributing to this ongoing exploration.
             </p>
           </div>
         )}
         {step === "ask" && (
           <form onSubmit={handleAsk} className="flex flex-col gap-4">
-            <Textarea
+            <label htmlFor="question-select" className="font-medium text-base">Select a question to rate:</label>
+            <select
+              id="question-select"
               value={question}
-              onChange={(e) => setQuestion(e.target.value)}
-              placeholder="Enter your question..."
-              className="resize-none min-h-[80px]"
+              onChange={e => setQuestion(e.target.value)}
+              className="border rounded px-3 py-2 text-base bg-white focus:outline-none focus:ring-2 focus:ring-primary"
               required
-            />
-            <Button type="submit" disabled={loading || !question.trim()}>
+            >
+              <option value="" disabled>Select a question...</option>
+              {questions.map((q, idx) => (
+                <option key={idx} value={q}>{q}</option>
+              ))}
+            </select>
+            <Button type="submit" disabled={loading || !question.trim()}> 
               {loading ? "Loading..." : "Get Chunks"}
             </Button>
           </form>
@@ -139,19 +165,19 @@ export default function Home() {
             <div className="flex flex-col gap-4">
               {chunks.map((chunk) => (
                 <div
-                  key={chunk.id}
+                  key={chunk._id}
                   className="flex flex-col gap-2 border rounded-lg bg-muted/60 shadow-inner w-full"
                   style={{ minHeight: 220, maxHeight: 400 }}
                 >
                   <div className="p-6 rounded-t-lg whitespace-pre-line leading-relaxed break-words text-base font-medium flex-1"
                     style={{ maxHeight: 320, overflowY: 'auto' }}
                   >
-                    {chunk.content}
+                    {chunk.text}
                   </div>
                   <div className="p-6 pt-4 border-t border-gray-200 rounded-b-lg bg-background flex items-center justify-center">
                     <Rating
-                      value={ratings[chunk.id] ?? 50}
-                      onChange={(v) => setRatings((r) => ({ ...r, [chunk.id]: v }))}
+                      value={ratings[chunk._id] ?? 50}
+                      onChange={(v) => setRatings((r) => ({ ...r, [chunk._id]: v }))}
                     />
                   </div>
                 </div>
@@ -159,7 +185,7 @@ export default function Home() {
             </div>
             <Button
               type="submit"
-              disabled={loading || chunks.some((c) => ratings[c.id] === undefined)}
+              disabled={loading || chunks.some((c) => ratings[c._id] === undefined)}
               className="w-full"
             >
               {loading ? "Submitting..." : "Submit Ratings"}
