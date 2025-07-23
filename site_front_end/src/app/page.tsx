@@ -82,6 +82,11 @@ export default function Home() {
         body: JSON.stringify({ question }),
       });
       const data = await res.json();
+      if (data.error) {
+        setError("Failed to fetch chunks: " + data.error);
+        setChunks([]);
+        return;
+      }
       setChunks(data.chunks);
       setRatings({});
       setStep("rate");
