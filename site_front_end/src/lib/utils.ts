@@ -4,4 +4,4 @@ import { twMerge } from "tailwind-merge";
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
-export const MAIN_URL = "http://0.0.0.0:8080";
+export const MAIN_URL = "https://rav-endpoint-latest.onrender.com";
