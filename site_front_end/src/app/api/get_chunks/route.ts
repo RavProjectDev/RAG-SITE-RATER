@@ -16,6 +16,7 @@ export async function POST(req: NextRequest) {
     const chunks = Array.isArray(data) ? data.slice(0, 3).map(item => ({ ...item })) : [];
     return NextResponse.json({ chunks });
   } catch (error) {
+    console.error('Error in get_chunks:', error);
     return NextResponse.json({ error: (error instanceof Error ? error.message : 'Unknown error'), chunks: [] }, { status: 500 });
   }
 }
