@@ -165,6 +165,17 @@ Whether you are a scholar, student, or admirer, your participation helps refine 
         {step === "rate" && (
           <form onSubmit={handleRatings} className="flex flex-col gap-6">
             <div className="text-lg font-semibold text-center text-primary mb-2">
+              {/* Rating instructions */}
+              <div className="mb-4 p-3 bg-blue-50 border-l-4 border-blue-400 rounded text-blue-900 text-base">
+                <strong>How to rate:</strong> Please rate each chunk based on how relevant it is to the question. Use a scale from 0 to 100, where:<br /><br />
+                <div className="pl-2">
+                  0 = completely unrelated to the question<br /><br />
+                  50 = somewhat related or tangentially relevant<br /><br />
+                  100 = highly relevant — either directly answering the question or providing strong supporting context
+                </div>
+                <br />
+                <em>Note: A chunk doesn’t need to directly answer the question to be valuable. If it’s on a similar topic or helps build context around the question, it may still be highly relevant. Please consider the overall usefulness and thematic connection when assigning a score.</em>
+              </div>
               Question: <span className="font-normal text-foreground">{question}</span>
             </div>
             <div className="flex flex-col gap-4">
