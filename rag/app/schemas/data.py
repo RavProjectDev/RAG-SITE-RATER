@@ -1,8 +1,8 @@
-from pydantic import BaseModel, HttpUrl, Field
-from typing import Optional, List, Dict
-import uuid
 from enum import Enum, auto
+from typing import List, Union, Optional
+
 from pydantic import BaseModel
+
 from rag.app.models.data import SanityData
 
 
@@ -33,19 +33,19 @@ class VectorEmbedding(BaseModel):
     Attributes:
         vector (list[float]): The embedding vector representation.
         dimension (int): The dimensionality of the embedding.
-        data (Chunk): The associated Chunk object containing the source text and metadata.
+        metadata (Chunk): The associated Chunk object containing the source text and metadata.
     """
 
     vector: List[float]
     dimension: int
-    data: Chunk
+    metadata: Chunk
     sanity_data: SanityData
 
     def to_dict(self) -> dict:
         return {
             "vector": self.vector,
-            "text": self.data.text,
-            "metadata": self.data.model_dump(),
+            "text": self.metadata.text,
+            "metadata": self.metadata.model_dump(),
             "sanity_data": self.sanity_data.to_dict(),
         }
 

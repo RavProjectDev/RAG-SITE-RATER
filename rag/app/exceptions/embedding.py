@@ -27,3 +27,9 @@ class EmbeddingConfigurationException(EmbeddingException):
     status_code = 422
     code = "embedding_config_error"
     description: str = "Invalid embedding configuration."
+
+
+class VertexAIEmbeddingException(EmbeddingAPIException):
+    status_code = 422
+    code = "vertexai_error"
+    description: str = "Issue connecting to VertexAI."

@@ -14,6 +14,7 @@ from rag.app.schemas.data import (
 from rag.app.schemas.response import UploadResponse
 
 from rag.app.services.data_upload_service import upload_document
+
 router = APIRouter()
 
 
@@ -61,7 +62,7 @@ async def upload_files(
           For any unexpected server-side errors.
     """
     try:
-        await upload_document(upload_request, embedding_conn,embedding_configuration)
+        await upload_document(upload_request, embedding_conn, embedding_configuration)
 
     except BaseUploadException as e:
         raise HTTPException(
@@ -79,13 +80,12 @@ async def upload_files(
                 "message": str(e),
             },
         )
-    return UploadResponse(
-        message="success"
-    )
+    return UploadResponse(message="success")
 
-@router.post("/update")
+
+@router.patch("/update")
 async def update_files(
-    body: Request ,
+    body: Request,
     embedding_conn: EmbeddingConnection = Depends(get_embedding_conn),
     embedding_configuration: EmbeddingConfiguration = Depends(
         get_embedding_configuration
@@ -93,7 +93,9 @@ async def update_files(
 ):
     print(await body.json())
     return
-@router.post("/delete")
+
+
+@router.delete("/delete")
 async def delete_files(
     body: Request,
     embedding_conn: EmbeddingConnection = Depends(get_embedding_conn),

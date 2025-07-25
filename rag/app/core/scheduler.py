@@ -10,13 +10,12 @@ scheduler = AsyncIOScheduler()
 
 def start_scheduler(
     connection: EmbeddingConnection,
-    metrics_conn: MetricsConnection,
     embedding_configuration: EmbeddingConfiguration,
 ):
     scheduler.add_job(
         run,
         "interval",
         hours=24 * 7,
-        args=[connection, metrics_conn, embedding_configuration],
+        args=[connection, embedding_configuration],
     )
     scheduler.start()

@@ -160,9 +160,7 @@ async def stream_llm_response(
     Streams completion from the LLM as text chunks.
     """
     client = get_openai_client()
-    messages: list[
-        Union[ChatCompletionSystemMessageParam, ChatCompletionUserMessageParam]
-    ] = [
+    messages = [
         ChatCompletionSystemMessageParam(
             role="system",
             content="You are a helpful assistant knowledgeable in Rav Soloveitchik's teachings.",
@@ -173,6 +171,7 @@ async def stream_llm_response(
         ),
     ]
     settings = get_settings()
+
     try:
         # Make the async streaming API call with timeout
         response = await asyncio.wait_for(
@@ -184,21 +183,33 @@ async def stream_llm_response(
             timeout=settings.external_api_timeout,
         )
 
-        # Log metrics (e.g., start of streaming)
-        async with metrics_connection.timed(metric_type="LLM_STREAM", data={}):
+        async def _consume_stream():
             async for chunk in response:
+                print("CHUNK: ", chunk)
                 try:
                     if not chunk.choices or not chunk.choices[0].delta:
                         yield "Error: Invalid chunk structure"
-                        continue
+                        return
                     delta = chunk.choices[0].delta
                     if delta.content:
                         yield delta.content
                 except (AttributeError, IndexError):
                     yield "Error: Invalid chunk structure"
+                    return
+            yield "[DONE]"
+
+        # Stream with metrics and per-token timeout
+        async with metrics_connection.timed(metric_type="LLM_STREAM", data={}):
+            stream = _consume_stream()
+            while True:
+                try:
+                    token = await asyncio.wait_for(
+                        stream.__anext__(), timeout=settings.external_api_timeout
+                    )
+                    yield token
+                except StopAsyncIteration:
                     break
 
-        yield "[DONE]"
     except asyncio.TimeoutError:
         raise LLMTimeoutException(
             f"LLM call timed out after {settings.external_api_timeout} seconds"

@@ -22,7 +22,7 @@ from rag.app.models.data import DocumentModel, Metadata
 
 class MongoEmbeddingStore(EmbeddingConnection):
     def __init__(
-        self, collection: AsyncIOMotorCollection, index: str, vector_path: str
+        self, collection, index: str, vector_path: str
     ):
         self.collection = collection
         self.index = index

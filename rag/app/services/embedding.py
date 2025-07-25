@@ -17,7 +17,6 @@ from google.auth import default
 from vertexai.language_models import TextEmbeddingInput, TextEmbeddingModel
 
 from rag.app.core.config import get_settings
-from rag.app.db.connections import MetricsConnection
 from rag.app.exceptions.embedding import *
 from rag.app.schemas.data import EmbeddingConfiguration, Embedding
 
@@ -50,11 +49,14 @@ def _get_embedding_service_config() -> EmbeddingServiceConfig:
 
 def _initialize_vertexai() -> None:
     """Initialize Vertex AI with project configuration."""
-    config = _get_embedding_service_config()
-    credentials, _ = default()
-    vertexai.init(
-        project=config.project_id, location=config.region, credentials=credentials
-    )
+    try:
+        config = _get_embedding_service_config()
+        credentials, _ = default()
+        vertexai.init(
+            project=config.project_id, location=config.region, credentials=credentials
+        )
+    except Exception as e:
+        raise EmbeddingException
 
 
 def _get_embedding_model() -> TextEmbeddingModel:
@@ -141,9 +143,16 @@ async def generate_embedding(
         EmbeddingConfigurationException: For invalid configurations
         EmbeddingException: For other embedding-related errors
     """
+    if not isinstance(configuration, EmbeddingConfiguration):
+        raise EmbeddingConfigurationException(
+            "Invalid configuration for embedding service"
+        )
     if not text:
         raise EmbeddingException("Text cannot be empty for embedding generation")
-
+    if not configuration:
+        raise EmbeddingConfigurationException(
+            "Configuration cannot be empty for embedding generation"
+        )
     try:
         if configuration == EmbeddingConfiguration.GEMINI:
             vector = await gemini_embedding(text)
@@ -153,9 +162,7 @@ async def generate_embedding(
             raise EmbeddingConfigurationException(
                 f"Unsupported embedding configuration: {configuration.name}"
             )
-
         return Embedding(text=text, vector=vector)
-
     except Exception as e:
         logging.error(f"Error in generate_embedding: {e}")
         raise

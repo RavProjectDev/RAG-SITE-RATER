@@ -65,7 +65,7 @@ async def embedding_helper(
             VectorEmbedding(
                 vector=data.vector,
                 dimension=len(data.vector),
-                data=chunk,
+                metadata=chunk,
                 sanity_data=sanity_data,
             )
         )

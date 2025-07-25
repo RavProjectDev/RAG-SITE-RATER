@@ -69,6 +69,7 @@ async def handler(
 
     try:
         # Generate prompt and metadata
+        transcript_data: list[TranscriptData]
         prompt, transcript_data = await asyncio.wait_for(
             generate(
                 chat_request=chat_request,
@@ -82,8 +83,8 @@ async def handler(
 
             async def event_generator():
                 """Asynchronous generator for Server-Sent Events (SSE)."""
-                yield f"data: {json.dumps({
-                    'transcript_data': transcript_data})}\n\n"
+                yield f"data: {json.dumps({'transcript_data': [item.to_dict() for item in transcript_data]})}\n\n"
+
                 async for chunk in stream_llm_response(
                     metrics_connection=metrics_conn,
                     prompt=prompt,
@@ -101,7 +102,9 @@ async def handler(
                     prompt=prompt,
                     model=llm_configuration,
                 )
-                return ChatResponse(message=llm_response,transcript_data=transcript_data)
+                return ChatResponse(
+                    message=llm_response, transcript_data=transcript_data
+                )
 
         return await full_response()
     except asyncio.TimeoutError:
@@ -111,7 +114,7 @@ async def handler(
         )
 
     except NoDocumentFoundException as e:
-        return ChatResponse(message=e.message_to_ui,transcript_data=[])
+        return ChatResponse(message=e.message_to_ui, transcript_data=[])
     except BaseAppException as e:
         raise HTTPException(
             status_code=e.status_code, detail={"code": e.code, "error": e.message}
@@ -121,12 +124,13 @@ async def handler(
             status_code=500, detail={"code": "internal_server_error", "message": str(e)}
         )
 
+
 async def generate(
     chat_request: ChatRequest,
     embedding_configuration: EmbeddingConfiguration,
     connection: EmbeddingConnection,
     metrics_connection: MetricsConnection,
-) -> (str, list[dict]):
+) -> (str, list[TranscriptData]):
     """
     Generate an LLM prompt and retrieve relevant context.
 
@@ -180,7 +184,9 @@ async def generate(
     # Retrieve matching documents with metrics logging
     vector: list[float] = embedding.vector
     data: list[DocumentModel] = []
-    async with metrics_connection.timed(metric_type="RETRIEVAL", data={"request_id": request_id}):
+    async with metrics_connection.timed(
+        metric_type="RETRIEVAL", data={"request_id": request_id}
+    ):
         try:
             data = await connection.retrieve(
                 embedded_data=vector, name_spaces=chat_request.name_spaces
@@ -196,7 +202,7 @@ async def generate(
         raise e
     except Exception as e:
         raise LLMBaseException(str(e))
-    transcript_data : list[TranscriptData] = []
+    transcript_data: list[TranscriptData] = []
     for datum in data:
         transcript_data.append(
             TranscriptData(
@@ -205,4 +211,4 @@ async def generate(
             )
         )
 
-    return prompt,transcript_data
+    return prompt, transcript_data
