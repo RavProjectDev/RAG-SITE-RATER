@@ -12,6 +12,7 @@ class TranscriptData(BaseModel):
         return {
             **self.metadata.model_dump(),
             "sanity_data": self.sanity_data.to_dict(),
+            "score": self.score,
         }
 
 
