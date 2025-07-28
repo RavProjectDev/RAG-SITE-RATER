@@ -10,19 +10,18 @@ async def test_insert_successful():
     collection = AsyncCollectionWrapper()
     store = MongoEmbeddingStore(collection, index="myindex", vector_path="vector")
     vector_embedding = make_vector_embedding()
-    await store.insert(
-        embedded_data=[vector_embedding]
-    )
+    await store.insert(embedded_data=[vector_embedding])
 
     cursor = collection.find({})
     all_docs = await cursor.to_list()
     doc = all_docs[0]
 
-    # Assert id
     assert doc["sanity_data"]["id"] == vector_embedding.sanity_data.id
     assert doc["sanity_data"]["slug"] == vector_embedding.sanity_data.slug
     assert doc["sanity_data"]["title"] == vector_embedding.sanity_data.title
-    assert doc["sanity_data"]["transcriptURL"] == str(vector_embedding.sanity_data.transcriptURL)
+    assert doc["sanity_data"]["transcriptURL"] == str(
+        vector_embedding.sanity_data.transcriptURL
+    )
     assert doc["sanity_data"]["hash"] == vector_embedding.sanity_data.hash
 
     assert doc["metadata"]["text"] == vector_embedding.metadata.text
@@ -37,32 +36,30 @@ async def test_insert_duplicate_vectors():
     collection = AsyncCollectionWrapper()
     store = MongoEmbeddingStore(collection, index="myindex", vector_path="vector")
     vector_embedding = make_vector_embedding()
-    await store.insert(
-        embedded_data=[vector_embedding]
-    )
-    await store.insert(
-        embedded_data=[vector_embedding]
-    )
+    await store.insert(embedded_data=[vector_embedding])
+    await store.insert(embedded_data=[vector_embedding])
 
     cursor = collection.find({})
     all_docs = await cursor.to_list()
     assert len(all_docs) == 1
+
 
 @pytest.mark.asyncio
 async def test_insert_same_vectors_with_the_same_sanity_id():
     collection = AsyncCollectionWrapper()
     store = MongoEmbeddingStore(collection, index="myindex", vector_path="vector")
-    vector_embedding_1 = make_vector_embedding(randomize_metadata=True,randomize_vector=True)
-    vector_embedding_2 = make_vector_embedding(randomize_metadata=True,randomize_vector=True)
-    await store.insert(
-        embedded_data=[vector_embedding_1]
+    vector_embedding_1 = make_vector_embedding(
+        randomize_metadata=True, randomize_vector=True
     )
-    await store.insert(
-        embedded_data=[vector_embedding_2]
+    vector_embedding_2 = make_vector_embedding(
+        randomize_metadata=True, randomize_vector=True
     )
+    await store.insert(embedded_data=[vector_embedding_1])
+    await store.insert(embedded_data=[vector_embedding_2])
     cursor = collection.find({})
     all_docs = await cursor.to_list()
     assert len(all_docs) == 1
+
 
 @pytest.mark.asyncio
 async def test_insert_many_vectors():
@@ -71,7 +68,7 @@ async def test_insert_many_vectors():
     num = 1000
     await store.insert(
         embedded_data=[
-            make_vector_embedding(randomize_metadata=True,randomize_vector=True)
+            make_vector_embedding(randomize_metadata=True, randomize_vector=True)
             for _ in range(num)
         ]
     )
@@ -89,14 +86,8 @@ async def test_insert_many_vectors_where_half_are_dups():
         make_vector_embedding(randomize_metadata=True, randomize_vector=True)
         for _ in range(num)
     ]
-    await store.insert(
-        embedded_data=embedded_data
-    )
-    await store.insert(
-        embedded_data=embedded_data
-    )
+    await store.insert(embedded_data=embedded_data)
+    await store.insert(embedded_data=embedded_data)
     cursor = collection.find({})
     all_docs = await cursor.to_list()
     assert len(all_docs) == num
-
-

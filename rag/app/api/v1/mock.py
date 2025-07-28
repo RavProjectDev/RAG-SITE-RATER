@@ -1,15 +1,14 @@
-import time
-import uuid
-from importlib.metadata import metadata
-
-from fastapi import APIRouter, Request, HTTPException
-from fastapi.responses import JSONResponse, StreamingResponse
-import json
 import asyncio
+import json
+
+from fastapi import APIRouter, Request
+from fastapi.responses import JSONResponse, StreamingResponse
+from pydantic import HttpUrl
 
 from rag.app.core.config import get_settings
+from rag.app.models.data import SanityData, Metadata
 from rag.app.schemas.requests import ChatRequest
-from rag.app.schemas.response import ChatResponse
+from rag.app.schemas.response import ChatResponse, TranscriptData
 
 router = APIRouter()
 
@@ -25,18 +24,25 @@ async def stream(request: ChatRequest) -> ChatResponse:
         "Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. "
         "Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum."
     )
-
-    metadatas = [
-        {
-            "chunk_size": 106,
-            "time_start": "00:11:11,504",
-            "time_end": "00:12:24,744",
-            "name_space": "Behaalotcha.srt",
-            "id": str(uuid.uuid4()),
-        }
+    transcript_datas: list[TranscriptData] = [
+        TranscriptData(
+            sanity_data=SanityData(
+                id="test-id",
+                slug="test-slug",
+                title="test-title",
+                transcriptURL=HttpUrl("https://test-transcript-url"),
+                hash="test-hash",
+            ),
+            metadata=Metadata(
+                chunk_size=100,
+                name_space="test-namespace",
+                time_start="00:00:01,000",
+                time_end="00:00:05,000",
+            ),
+        )
     ]
 
-    return ChatResponse(message=message, metadata=metadatas)
+    return ChatResponse(message=message, transcript_data=transcript_datas)
 
 
 @router.post("/stream")
