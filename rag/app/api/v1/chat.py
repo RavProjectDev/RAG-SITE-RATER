@@ -43,7 +43,7 @@ router = APIRouter()
         200: {
             "content": {
                 "application/json": {"schema": ChatResponse.model_json_schema()},
-                "text/event-stream": {"schema": {}},  # StreamingResponse has no model
+                "text/event-stream": {"schema": {}},
             },
             "description": "Returns either ChatResponse (JSON) or StreamingResponse (SSE)",
         }
