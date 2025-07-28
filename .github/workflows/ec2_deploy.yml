@@ -1,23 +1,18 @@
 name: Deploy to EC2
-
 on:
   push:
     branches: [main]  # or your deploy branch
-
 jobs:
   deploy:
     runs-on: ubuntu-latest
-
     steps:
     - name: Checkout code
       uses: actions/checkout@v3
-
     - name: Build and push Docker image
       run: |
         docker build -t ravprojectdev/rag:latest -f rag/Dockerfile rag/
         echo "${{ secrets.DOCKERHUB_TOKEN }}" | docker login -u ${{ secrets.DOCKERHUB_USERNAME }} --password-stdin
         docker push ravprojectdev/rag:latest
-
     - name: Deploy to EC2
       uses: appleboy/ssh-action@v1.0.0
       with:
@@ -33,13 +28,13 @@ jobs:
             --name rag_container \
             -v /tmp/gcloud-key.json:/rag/credentials/gcloud-key.json \
             -p 8001:8000 \
-            -e OPENAI_API_KEY="${OPENAI_API_KEY}" \
-            -e SBERT_API_URL="${SBERT_API_URL}" \
-            -e MONGODB_URI="${MONGODB_URI}" \
-            -e MONGODB_DB_NAME="${MONGODB_DB_NAME}" \
-            -e MONGODB_VECTOR_COLLECTION="${MONGODB_VECTOR_COLLECTION}" \
-            -e COLLECTION_INDEX="${COLLECTION_INDEX}" \
-            -e GEMINI_API_KEY="${GEMINI_API_KEY}" \
-            -e GOOGLE_CLOUD_PROJECT_ID="${GOOGLE_CLOUD_PROJECT_ID}" \
-            -e VERTEX_REGION="${VERTEX_REGION}" \
+            -e OPENAI_API_KEY="${{ secrets.OPENAI_API_KEY }}" \
+            -e SBERT_API_URL="${{ secrets.SBERT_API_URL }}" \
+            -e MONGODB_URI="${{ secrets.MONGODB_URI }}" \
+            -e MONGODB_DB_NAME="${{ secrets.MONGODB_DB_NAME }}" \
+            -e MONGODB_VECTOR_COLLECTION="${{ secrets.MONGODB_VECTOR_COLLECTION }}" \
+            -e COLLECTION_INDEX="${{ secrets.COLLECTION_INDEX }}" \
+            -e GEMINI_API_KEY="${{ secrets.GEMINI_API_KEY }}" \
+            -e GOOGLE_CLOUD_PROJECT_ID="${{ secrets.GOOGLE_CLOUD_PROJECT_ID }}" \
+            -e VERTEX_REGION="${{ secrets.VERTEX_REGION }}" \
             ravprojectdev/rag:latest
