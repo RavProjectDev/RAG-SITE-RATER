@@ -33,4 +33,13 @@ jobs:
             --name rag_container \
             -v /tmp/gcloud-key.json:/rag/credentials/gcloud-key.json \
             -p 8001:8000 \
+            -e OPENAI_API_KEY="${OPENAI_API_KEY}" \
+            -e SBERT_API_URL="${SBERT_API_URL}" \
+            -e MONGODB_URI="${MONGODB_URI}" \
+            -e MONGODB_DB_NAME="${MONGODB_DB_NAME}" \
+            -e MONGODB_VECTOR_COLLECTION="${MONGODB_VECTOR_COLLECTION}" \
+            -e COLLECTION_INDEX="${COLLECTION_INDEX}" \
+            -e GEMINI_API_KEY="${GEMINI_API_KEY}" \
+            -e GOOGLE_CLOUD_PROJECT_ID="${GOOGLE_CLOUD_PROJECT_ID}" \
+            -e VERTEX_REGION="${VERTEX_REGION}" \
             ravprojectdev/rag:latest
