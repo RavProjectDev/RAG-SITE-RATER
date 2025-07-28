@@ -37,7 +37,7 @@ async def stream(request: ChatRequest) -> ChatResponse:
                 chunk_size=100,
                 name_space="test-namespace",
                 time_start="00:00:01,000",
-                time_end="00:00:05,000",
+                time_end="00:00:05,300",
             ),
         )
     ]
