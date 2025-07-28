@@ -208,6 +208,7 @@ async def generate(
             TranscriptData(
                 sanity_data=datum.sanity_data,
                 metadata=datum.metadata,
+                score=datum.score,
             )
         )
 

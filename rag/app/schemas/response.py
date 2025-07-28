@@ -6,6 +6,7 @@ from rag.app.models.data import SanityData, Metadata
 class TranscriptData(BaseModel):
     sanity_data: SanityData
     metadata: Metadata
+    score: float
 
     def to_dict(self) -> dict:
         return {

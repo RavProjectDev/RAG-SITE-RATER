@@ -21,9 +21,7 @@ from rag.app.models.data import DocumentModel, Metadata
 
 
 class MongoEmbeddingStore(EmbeddingConnection):
-    def __init__(
-        self, collection, index: str, vector_path: str
-    ):
+    def __init__(self, collection, index: str, vector_path: str):
         self.collection = collection
         self.index = index
         self.vector_path = vector_path
@@ -58,7 +56,7 @@ class MongoEmbeddingStore(EmbeddingConnection):
         name_spaces: list[str] | None = None,
         k=5,
         THRESHOLD: int = 0.85,
-    ):
+    ) -> list[DocumentModel]:
         pipeline = []
 
         # 1. $vectorSearch first
@@ -133,16 +131,10 @@ class MongoEmbeddingStore(EmbeddingConnection):
             {
                 "$group": {
                     "_id": "$sanity_data.id",
-                    "transcript_hash": {"$first": "$sanity_data.hash"}
+                    "transcript_hash": {"$first": "$sanity_data.hash"},
                 }
             },
-            {
-                "$project": {
-                    "_id": 0,
-                    "transcript_id": "$_id",
-                    "transcript_hash": 1
-                }
-            }
+            {"$project": {"_id": 0, "transcript_id": "$_id", "transcript_hash": 1}},
         ]
 
         cursor = self.collection.aggregate(pipeline)
@@ -153,11 +145,10 @@ class MongoEmbeddingStore(EmbeddingConnection):
         result = await self.collection.delete_many({"sanity_data.id": transcript_id})
         return result.deleted_count > 0
 
+
 class MongoMetricsConnection(MetricsConnection):
     def __init__(self, collection: AsyncIOMotorCollection):
         self.collection = collection
-
-
 
     async def log(self, metric_type: str, data: Dict[str, Any]):
         doc = {"type": metric_type, "timestamp": datetime.utcnow(), **data}
