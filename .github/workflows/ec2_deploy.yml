@@ -14,7 +14,7 @@ jobs:
 
     - name: Build and push Docker image
       run: |
-        docker build -t ravprojectdev/rag:latest -f rag/Dockerfile .
+        docker build -t ravprojectdev/rag:latest -f rag/Dockerfile rag/
         echo "${{ secrets.DOCKERHUB_TOKEN }}" | docker login -u ${{ secrets.DOCKERHUB_USERNAME }} --password-stdin
         docker push ravprojectdev/rag:latest
 
