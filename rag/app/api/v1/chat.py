@@ -38,7 +38,16 @@ router = APIRouter()
 
 @router.post(
     "/",
-    response_model=None,
+    response_model=ChatResponse,
+    responses={
+        200: {
+            "content": {
+                "application/json": {"schema": ChatResponse.model_json_schema()},
+                "text/event-stream": {"schema": {}},  # StreamingResponse has no model
+            },
+            "description": "Returns either ChatResponse (JSON) or StreamingResponse (SSE)",
+        }
+    },
 )
 async def handler(
     chat_request: ChatRequest,
