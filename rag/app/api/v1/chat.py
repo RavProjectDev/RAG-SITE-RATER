@@ -38,13 +38,14 @@ router = APIRouter()
 
 @router.post(
     "/",
+    response_model=ChatResponse,
     responses={
         200: {
+            "description": "Returns ChatResponse (JSON) or StreamingResponse (SSE)",
             "content": {
-                "application/json": {"schema": ChatResponse.model_json_schema()},
-                "text/event-stream": {"schema": {"type": "string", "format": "binary"}},
+                # Let FastAPI generate the JSON schema
+                "text/event-stream": {"schema": {"type": "string", "format": "binary"}}
             },
-            "description": "Returns either ChatResponse (JSON) or StreamingResponse (SSE)",
         }
     },
 )
