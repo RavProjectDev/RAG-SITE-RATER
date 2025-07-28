@@ -1,48 +1,87 @@
 import asyncio
 import json
 
-from fastapi import APIRouter, Request
+from fastapi import APIRouter, Request, Depends
 from fastapi.responses import JSONResponse, StreamingResponse
 from pydantic import HttpUrl
 
 from rag.app.core.config import get_settings
-from rag.app.models.data import SanityData, Metadata
+from rag.app.db.connections import EmbeddingConnection, MetricsConnection
+from rag.app.dependencies import get_embedding_conn, get_embedding_configuration
+from rag.app.exceptions.db import DataBaseException
+from rag.app.exceptions.embedding import (
+    EmbeddingConfigurationException,
+    EmbeddingException,
+    EmbeddingAPIException,
+    EmbeddingTimeOutException,
+)
+from rag.app.models.data import SanityData, Metadata, DocumentModel
+from rag.app.schemas.data import EmbeddingConfiguration
 from rag.app.schemas.requests import ChatRequest
 from rag.app.schemas.response import ChatResponse, TranscriptData
+from rag.app.services.embedding import generate_embedding
 
 router = APIRouter()
 
 
 @router.post("/full", response_model=ChatResponse)
-async def stream(request: ChatRequest) -> ChatResponse:
-    await asyncio.sleep(5)  # async wait
-
-    message = (
-        "Lorem ipsum dolor sit amet, consectetur adipiscing elit. "
-        "Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. "
-        "Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. "
-        "Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. "
-        "Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum."
+async def stream(
+    request: ChatRequest,
+    embedding_conn: EmbeddingConnection = Depends(get_embedding_conn),
+    embedding_configuration: EmbeddingConfiguration = Depends(
+        get_embedding_configuration
+    ),
+) -> ChatResponse:
+    await asyncio.sleep(5)
+    question = request.question
+    transcript_data = await helper(
+        message=question,
+        embedding_conn=embedding_conn,
+        embedding_configuration=embedding_configuration,
     )
-    transcript_datas: list[TranscriptData] = [
-        TranscriptData(
-            sanity_data=SanityData(
-                id="test-id",
-                slug="test-slug",
-                title="test-title",
-                transcriptURL=HttpUrl("https://test-transcript-url"),
-                hash="test-hash",
-            ),
-            metadata=Metadata(
-                chunk_size=100,
-                name_space="test-namespace",
-                time_start="00:00:01,000",
-                time_end="00:00:05,300",
-            ),
-        )
-    ]
 
-    return ChatResponse(message=message, transcript_data=transcript_datas)
+    return ChatResponse(message=question, transcript_data=transcript_data)
+
+
+async def helper(
+    message: str, embedding_conn, embedding_configuration
+) -> list[TranscriptData]:
+    try:
+        embedding = await generate_embedding(
+            text=message,
+            configuration=embedding_configuration,
+        )
+
+    except (
+        EmbeddingException,
+        EmbeddingConfigurationException,
+        EmbeddingAPIException,
+        EmbeddingTimeOutException,
+    ) as e:
+        raise e
+    except Exception as e:
+        raise EmbeddingException(f"Unexpected embedding error: {str(e)}")
+    if embedding is None:
+        raise EmbeddingException(f"Could not generate embedding for {message}")
+
+    vector: list[float] = embedding.vector
+    data: list[DocumentModel]
+    try:
+        data = await embedding_conn.retrieve(embedded_data=vector)
+    except DataBaseException:
+        raise
+    except Exception as e:
+        raise DataBaseException(f"Database retrieval failed: {str(e)}")
+
+    transcript_data: list[TranscriptData] = []
+    for datum in data:
+        transcript_data.append(
+            TranscriptData(
+                sanity_data=datum.sanity_data,
+                metadata=datum.metadata,
+            )
+        )
+    return transcript_data
 
 
 @router.post("/stream")
