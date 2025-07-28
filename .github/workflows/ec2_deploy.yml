@@ -26,11 +26,11 @@ jobs:
         key: ${{ secrets.EC2_SSH_KEY }}
         script: |
           docker pull ravprojectdev/rag:latest
-          docker stop my_container || true
-          docker rm my_container || true
+          docker stop rag_container || true
+          docker rm rag_container || true
           echo "${{ secrets.GCLOUD_KEY_JSON_B64 }}" | base64 -d > /tmp/gcloud-key.json
           docker run -d \
             --name rag_container \
             -v /tmp/gcloud-key.json:/rag/credentials/gcloud-key.json \
-            -p 8000:8000 \
+            -p 8001:8000 \
             ravprojectdev/rag:latest
