@@ -27,7 +27,7 @@ jobs:
           docker run -d \
             --name rag_container \
             -v /tmp/gcloud-key.json:/rag/credentials/gcloud-key.json \
-            -p 8001:8000 \
+            -p 8000:8000 \
             -e OPENAI_API_KEY="${{ secrets.OPENAI_API_KEY }}" \
             -e SBERT_API_URL="${{ secrets.SBERT_API_URL }}" \
             -e MONGODB_URI="${{ secrets.MONGODB_URI }}" \
