@@ -55,7 +55,7 @@ class MongoEmbeddingStore(EmbeddingConnection):
         embedded_data: List[float],
         name_spaces: list[str] | None = None,
         k=5,
-        THRESHOLD: int = 0.85,
+        threshold: float = 0.85,
     ) -> list[DocumentModel]:
         pipeline = []
 
@@ -81,7 +81,7 @@ class MongoEmbeddingStore(EmbeddingConnection):
         pipeline.append({"$addFields": {"score": {"$meta": "vectorSearchScore"}}})
 
         # Filter documents with score >= THRESHOLD
-        pipeline.append({"$match": {"score": {"$gte": THRESHOLD}}})
+        pipeline.append({"$match": {"score": {"$gte": threshold}}})
 
         # Optionally exclude the vector field from the results
         pipeline.append(
@@ -139,7 +139,8 @@ class MongoEmbeddingStore(EmbeddingConnection):
 
         cursor = self.collection.aggregate(pipeline)
         result = await cursor.to_list(length=1)
-        return result[0]["unique_ids"] if result else []
+        tmp = result[0].get("unique_ids") if result else []
+        return tmp if tmp else []
 
     async def delete_document(self, transcript_id: str) -> bool:
         result = await self.collection.delete_many({"sanity_data.id": transcript_id})

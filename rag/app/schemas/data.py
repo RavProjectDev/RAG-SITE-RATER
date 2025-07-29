@@ -12,18 +12,28 @@ class Chunk(BaseModel):
 
     Attributes:
         metadata (dict[str, str]): Additional metadata about the chunk (e.g., source, date).
-        text (str): The raw text content of the chunk.
+        text_to_embed (str): The raw text content of the chunk.
         chunk_size (int): The total size of the chunk in characters.
         char_start (int): The starting character index of the chunk in the original text.
         char_end (int): The ending character index of the chunk in the original text.
     """
 
-    text: str
+    full_text: str
+    text_to_embed: str
     chunk_size: int
     time_start: Optional[str] = None
     time_end: Optional[str] = None
     name_space: str
+    embed_size: int
 
+    def to_dict(self):
+        return {
+            "chunk_size": self.chunk_size,
+            "time_start": self.time_start,
+            "time_end": self.time_end,
+            "name_space": self.name_space,
+            "embed_size": self.embed_size,
+        }
 
 
 class VectorEmbedding(BaseModel):
@@ -44,8 +54,8 @@ class VectorEmbedding(BaseModel):
     def to_dict(self) -> dict:
         return {
             "vector": self.vector,
-            "text": self.metadata.text,
-            "metadata": self.metadata.model_dump(),
+            "text": self.metadata.full_text,
+            "metadata": self.metadata.to_dict(),
             "sanity_data": self.sanity_data.to_dict(),
         }
 
@@ -80,6 +90,7 @@ class LLMModel(Enum):
     GPT_4 = "o4-mini"
     MOCK = "mock"
 
+
 class TranscriptData(BaseModel):
-    transcript_id : str
-    transcript_hash : str
+    transcript_id: str
+    transcript_hash: str

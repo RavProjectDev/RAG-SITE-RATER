@@ -1,7 +1,6 @@
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
-from fastapi import FastAPI
 
-from rag.app.db.connections import EmbeddingConnection, MetricsConnection
+from rag.app.db.connections import EmbeddingConnection
 from rag.app.schemas.data import EmbeddingConfiguration
 from rag.app.services.sync_service.sync_db import run
 

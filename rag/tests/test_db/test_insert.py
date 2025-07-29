@@ -24,7 +24,6 @@ async def test_insert_successful():
     )
     assert doc["sanity_data"]["hash"] == vector_embedding.sanity_data.hash
 
-    assert doc["metadata"]["text"] == vector_embedding.metadata.text
     assert doc["metadata"]["chunk_size"] == vector_embedding.metadata.chunk_size
     assert doc["metadata"]["name_space"] == vector_embedding.metadata.name_space
 

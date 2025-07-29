@@ -17,6 +17,7 @@ class EmbeddingConnection(ABC):
     async def insert(self, embedded_data: List[VectorEmbedding]) -> list[DocumentModel]:
         """
         Inserts one vector to the database.
+        :param collection:
         :param embedded_data:
         A transcript "chunk"
         :return:
@@ -25,7 +26,10 @@ class EmbeddingConnection(ABC):
 
     @abstractmethod
     async def retrieve(
-        self, embedded_data: List[float], name_spaces: list[str] | None = None
+        self,
+        embedded_data: List[float],
+        name_spaces: list[str] | None = None,
+        threshold: float = 0.85,
     ):
         """
         Retrieves documents based on vector
@@ -35,8 +39,9 @@ class EmbeddingConnection(ABC):
     @abstractmethod
     async def get_all_unique_transcript_ids(self) -> list[TranscriptData]:
         pass
+
     @abstractmethod
-    async def delete_document(self,transcript_id: str) -> bool :
+    async def delete_document(self, transcript_id: str) -> bool:
         pass
 
 

@@ -55,32 +55,41 @@ async def run(
             logging.info(f"[run] Updated hash detected for: {doc_id}")
             documents_needed_to_be_updated.append(SanityData(id=doc_id, **content))
 
-    logging.info(f"[run] {len(documents_needed_to_be_uploaded)} documents need to be uploaded.")
-    logging.info(f"[run] {len(documents_needed_to_be_updated)} documents need to be updated.")
+    logging.info(
+        f"[run] {len(documents_needed_to_be_uploaded)} documents need to be uploaded."
+    )
+    logging.info(
+        f"[run] {len(documents_needed_to_be_updated)} documents need to be updated."
+    )
 
     if documents_needed_to_be_uploaded:
         logging.info("[run] Uploading new documents...")
-        await upload_documents(documents_needed_to_be_uploaded, connection, embedding_configuration)
+        await upload_documents(
+            documents_needed_to_be_uploaded, connection, embedding_configuration
+        )
         logging.info("[run] Finished uploading new documents.")
 
     if documents_needed_to_be_updated:
         logging.info("[run] Updating modified documents...")
-        await update_documents(documents_needed_to_be_updated, connection, embedding_configuration)
+        await update_documents(
+            documents_needed_to_be_updated, connection, embedding_configuration
+        )
         logging.info("[run] Finished updating modified documents.")
 
     logging.info("[run] Processing complete.")
 
 
 if __name__ == "__main__":
+
     async def main():
         load_dotenv()
         mongo_uri = os.getenv("MONGODB_URI")
         client = AsyncIOMotorClient(
             mongo_uri, tlsCAFile=certifi.where(), maxPoolSize=50
         )
-        mongodb_db_name = os.getenv("MONGODB_DB_NAME")
+        mongodb_db_name = "rav_dev"
         db = client[mongodb_db_name]
-        vector_embedding_collection_name = os.getenv("MONGODB_VECTOR_COLLECTION")
+        vector_embedding_collection_name = "gemini_embeddings_v2"
         vector_embedding_collection = db[vector_embedding_collection_name]
         collection_index = os.getenv("COLLECTION_INDEX")
         vector_path = "vector"
@@ -90,6 +99,8 @@ if __name__ == "__main__":
             vector_path=vector_path,
         )
         embedding_configuration = EmbeddingConfiguration.GEMINI
-        await run(connection=mongo_connection, embedding_configuration=embedding_configuration)
+        await run(
+            connection=mongo_connection, embedding_configuration=embedding_configuration
+        )
 
     asyncio.run(main())

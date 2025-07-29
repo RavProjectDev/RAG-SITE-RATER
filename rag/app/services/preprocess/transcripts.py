@@ -2,33 +2,65 @@ import json
 import pysrt
 from rag.app.schemas.data import Chunk, TypeOfFormat
 import logging
-from rag.app.services.preprocess.constants import CHUNKING_SIZE
+from rag.app.services.preprocess.constants import EMBEDDING_TEXT_SIZE, FULL_TEXT_SIZE
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
-def build_chunk(subs, word_count, name_space) -> Chunk:
+def build_chunks(subs, name_space, embed_word_limit=EMBEDDING_TEXT_SIZE) -> list[Chunk]:
     """
-    Builds a Chunk object from a list of subtitle segments.
+    Builds a list of Chunk objects from subtitle segments, where each chunk contains
+    a 40-word segment for embedding and the full text for reference.
 
     :param subs: List of subtitle objects (pysrt.SubRipItem).
-    :param word_count: Total number of words in the combined text.
     :param name_space: The name of the file or namespace for this chunk.
-    :return: Chunk object.
-    """
-    start = subs[0].start
-    end = subs[-1].end
-    chunk_text = " ".join(s.text.replace("\n", " ") for s in subs)
+    :param embed_word_limit: Number of words per embedding segment (default: 40).
+    :return: List of Chunk objects.
 
-    chunk = Chunk(
-        time_start=str(start),
-        time_end=str(end),
-        text=chunk_text,
-        chunk_size=word_count,
-        name_space=name_space,
-    )
-    return chunk
+    Example:
+    If subs contain 120 words total:
+    - Chunk 1: text_to_embed = words 1-40, full_text = all 120 words
+    - Chunk 2: text_to_embed = words 41-80, full_text = all 120 words
+    - Chunk 3: text_to_embed = words 81-120, full_text = all 120 words
+    """
+    if not subs:
+        return []
+
+    start_time = subs[0].start
+    end_time = subs[-1].end
+
+    full_text = " ".join(s.text.replace("\n", " ") for s in subs)
+
+    # Get all words from all subtitles
+    all_words = []
+    for sub in subs:
+        clean_text = sub.text.replace("\n", " ")
+        words = clean_text.split()
+        all_words.extend(words)
+
+    # Create chunks with 40-word segments for embedding
+    chunks = []
+    total_words = len(all_words)
+
+    for i in range(0, total_words, embed_word_limit):
+        # Get the next 40 words (or remaining words if less than 40)
+        end_idx = min(i + embed_word_limit, total_words)
+        text_to_embed = " ".join(all_words[i:end_idx])
+        embed_size = end_idx - i
+
+        chunk = Chunk(
+            time_start=str(start_time),
+            time_end=str(end_time),
+            full_text=full_text,  # Same complete text for all chunks
+            text_to_embed=text_to_embed,  # Unique 40-word segment
+            chunk_size=total_words,  # Total word count across all subs
+            embed_size=embed_size,  # Words in this specific embedding segment
+            name_space=name_space,
+        )
+        chunks.append(chunk)
+
+    return chunks
 
 
 def chunk_srt(content: tuple[str, str]) -> list[Chunk]:
@@ -46,15 +78,17 @@ def chunk_srt(content: tuple[str, str]) -> list[Chunk]:
         current_chunk.append(sub)
         word_count += len(words)
 
-        if word_count >= CHUNKING_SIZE:
-            chunk = build_chunk(current_chunk, word_count, file_name)
-            chunks.append(chunk)
+        if word_count >= FULL_TEXT_SIZE:
+            # Build chunks from current_chunk and add them to chunks list
+            new_chunks = build_chunks(current_chunk, file_name)
+            chunks.extend(new_chunks)
             current_chunk = []
             word_count = 0
 
+    # Handle remaining subtitles if any
     if current_chunk:
-        chunk = build_chunk(current_chunk, word_count, file_name)
-        chunks.append(chunk)
+        new_chunks = build_chunks(current_chunk, file_name)
+        chunks.extend(new_chunks)
 
     logger.debug(f"Created {len(chunks)} chunks from {file_name}")
     return chunks
@@ -74,16 +108,18 @@ def chunk_txt(content: tuple[str, str]) -> list[Chunk]:
 
     chunks: list[Chunk] = []
 
-    for i in range(0, len(words), CHUNKING_SIZE):
-        chunk_words = words[i : i + CHUNKING_SIZE]
+    for i in range(0, len(words), EMBEDDING_TEXT_SIZE):
+        chunk_words = words[i : i + EMBEDDING_TEXT_SIZE]
         chunk_text = " ".join(chunk_words)
 
         chunk = Chunk(
             name_space=file_name,
-            text=chunk_text,
+            text_to_embed=chunk_text,
             chunk_size=len(chunk_words),
             time_start=None,
             time_end=None,
+            full_text=chunk_text,
+            embed_size=len(chunk_words),
         )
         chunks.append(chunk)
 
@@ -151,7 +187,7 @@ def translate_chunks(chunks: list[Chunk]) -> list[tuple[str, Chunk]]:
         if i % 100 == 0:
             logger.debug(f"Translated {i}/{len(chunks)} chunks")
 
-        words = chunk.text.lower().split()
+        words = chunk.text_to_embed.lower().split()
         translated_words = [translations.get(word, word) for word in words]
         mapped_text = " ".join(translated_words)
         result.append((mapped_text, chunk))

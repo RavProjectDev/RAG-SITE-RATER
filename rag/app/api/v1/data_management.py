@@ -80,6 +80,7 @@ async def upload_files(
                 "message": str(e),
             },
         )
+
     return UploadResponse(message="success")
 
 

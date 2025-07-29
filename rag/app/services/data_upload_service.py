@@ -1,3 +1,5 @@
+import logging
+
 import httpx
 
 from rag.app.db.connections import EmbeddingConnection
@@ -45,9 +47,7 @@ async def generate_all_embeddings(
 ) -> list[VectorEmbedding]:
 
     sanity_data = SanityData(**upload_request.model_dump())
-    return await embedding_helper(
-        chunks, configuration, sanity_data
-    )
+    return await embedding_helper(chunks, configuration, sanity_data)
 
 
 async def embedding_helper(
@@ -58,7 +58,7 @@ async def embedding_helper(
     embeddings = []
     for chunk in chunks:
         data: Embedding = await generate_embedding(
-            text=chunk.text,
+            text=chunk.text_to_embed,
             configuration=configuration,
         )
         embeddings.append(
@@ -72,30 +72,33 @@ async def embedding_helper(
     return embeddings
 
 
-
 async def upload_documents(
     documents: list[SanityData],
     connection: EmbeddingConnection,
-    embedding_configuration: EmbeddingConfiguration
+    embedding_configuration: EmbeddingConfiguration,
 ):
     for doc in documents:
         await upload_document(doc, connection, embedding_configuration)
 
+
 async def upload_document(
     doc: SanityData,
     connection: EmbeddingConnection,
-    embedding_configuration: EmbeddingConfiguration
+    embedding_configuration: EmbeddingConfiguration,
 ):
+    logging.info("[run] Uploading new document...")
     embedding = await pre_process_uploaded_document(
         upload_request=doc,
         embedding_configuration=embedding_configuration,
     )
     await connection.insert(embedding)
+    logging.info("[run] Finished uploading new document.")
+
 
 async def update_documents(
     documents: list[SanityData],
     connection: EmbeddingConnection,
-    embedding_configuration: EmbeddingConfiguration
+    embedding_configuration: EmbeddingConfiguration,
 ):
     for doc in documents:
         deleted = await delete_document(doc.transcript_id, connection)
@@ -103,15 +106,13 @@ async def update_documents(
             continue
         await upload_document(doc, connection, embedding_configuration)
 
+
 async def delete_documents(
-    documents: list[SanityData],
-    connection: EmbeddingConnection
+    documents: list[SanityData], connection: EmbeddingConnection
 ):
     for doc in documents:
         await delete_document(doc.transcript_id, connection)
 
-async def delete_document(
-    document_id: str,
-    connection: EmbeddingConnection
-) -> bool:
+
+async def delete_document(document_id: str, connection: EmbeddingConnection) -> bool:
     return await connection.delete_document(document_id)

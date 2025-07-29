@@ -132,7 +132,6 @@ async def generate_embedding(
     Generate embeddings based on the specified configuration.
 
     Args:
-        metrics_connection: Connection for tracking metrics
         text: Text to generate embeddings for
         configuration: Embedding configuration to use
 

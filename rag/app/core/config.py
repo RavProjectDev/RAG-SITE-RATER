@@ -5,6 +5,8 @@ from pydantic_settings import BaseSettings
 from rag.app.schemas.data import EmbeddingConfiguration, LLMModel
 from functools import lru_cache
 
+COLLECTIONS = ["gemini_embeddings_v2", "chunk_embeddings_gemini_embedding_001"]
+
 
 class Environment(Enum):
     PRD = "PRD"
@@ -17,7 +19,7 @@ class Settings(BaseSettings):
     mongodb_uri: str
     mongodb_db_name: str
     mongodb_vector_collection: str
-    collection_index: str
+    collection_index: str = "vector_index"
     gemini_api_key: str
     google_cloud_project_id: str
     embedding_configuration: EmbeddingConfiguration = EmbeddingConfiguration.GEMINI

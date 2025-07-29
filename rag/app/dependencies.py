@@ -25,3 +25,7 @@ def get_llm_configuration() -> LLMModel:
 
 def get_settings_dependency():
     return config.get_settings()
+
+
+def get_random_embedding_collection(request: Request) -> EmbeddingConnection:
+    return request.app.state.mongo_conn
