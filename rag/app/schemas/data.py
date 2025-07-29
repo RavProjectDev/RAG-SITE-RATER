@@ -1,3 +1,4 @@
+import uuid
 from enum import Enum, auto
 from typing import List, Union, Optional
 
@@ -18,6 +19,7 @@ class Chunk(BaseModel):
         char_end (int): The ending character index of the chunk in the original text.
     """
 
+    full_text_id: uuid = uuid.uuid4()
     full_text: str
     text_to_embed: str
     chunk_size: int
@@ -33,7 +35,10 @@ class Chunk(BaseModel):
             "time_end": self.time_end,
             "name_space": self.name_space,
             "embed_size": self.embed_size,
+            "full_text_id": str(self.full_text_id),
         }
+
+    model_config = {"env_file": ".env", "arbitrary_types_allowed": True}
 
 
 class VectorEmbedding(BaseModel):

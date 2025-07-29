@@ -64,6 +64,7 @@ type Chunk = {
 export default function Home() {
   // App state
   const [question, setQuestion] = useState("");
+  const [embedding_type, setEmbeddingType] = useState("");
   const [chunks, setChunks] = useState<Chunk[]>([]);
   const [ratings, setRatings] = useState<{ [id: string]: number }>({});
   const [step, setStep] = useState<"ask" | "rate" | "done">("ask");
@@ -88,6 +89,7 @@ export default function Home() {
         return;
       }
       setChunks(data.chunks);
+      setEmbeddingType(data.embedding_type);
       setRatings({});
       setStep("rate");
     } catch (err) {
@@ -110,9 +112,11 @@ export default function Home() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           user_question: question,
+          embedding_type: embedding_type,
           document: chunks.map((chunk) => [
             chunk, // full chunk object
-            ratings[chunk._id] ?? 0 // user rating
+            ratings[chunk._id] ?? 0 // user rating, 
+
           ]),
         }),
       });
@@ -169,8 +173,8 @@ Whether you are a scholar, student, or admirer, your participation helps refine 
               <div className="mb-4 p-3 bg-blue-50 border-l-4 border-blue-400 rounded text-blue-900 text-base">
                 <strong>How to rate:</strong> Please rate each chunk based on how relevant it is to the question. Use a scale from 0 to 100, where:<br /><br />
                 <div className="pl-2">
-                  0 = completely unrelated to the question<br /><br />
-                  50 = somewhat related or tangentially relevant<br /><br />
+                  0 = completely unrelated to the question 
+                  50 = somewhat related or tangentially relevant
                   100 = highly relevant — either directly answering the question or providing strong supporting context
                 </div>
                 <br />

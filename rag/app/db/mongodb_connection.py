@@ -127,20 +127,27 @@ class MongoEmbeddingStore(EmbeddingConnection):
         return documents
 
     async def get_all_unique_transcript_ids(self) -> list[TranscriptData]:
+
         pipeline = [
             {
                 "$group": {
-                    "_id": "$sanity_data.id",
-                    "transcript_hash": {"$first": "$sanity_data.hash"},
+                    "_id": None,
+                    "unique_ids": {
+                        "$addToSet": {
+                            "transcript_id": "$sanity_data.id",
+                            "transcript_hash": "$sanity_data.hash",
+                        }
+                    },
                 }
             },
-            {"$project": {"_id": 0, "transcript_id": "$_id", "transcript_hash": 1}},
+            {"$project": {"_id": 0, "unique_ids": 1}},
         ]
 
         cursor = self.collection.aggregate(pipeline)
-        result = await cursor.to_list(length=1)
-        tmp = result[0].get("unique_ids") if result else []
-        return tmp if tmp else []
+        result = await cursor.to_list()
+        raw_data = result[0].get("unique_ids") if result else []
+        tmp = [TranscriptData(**item) for item in raw_data]
+        return tmp
 
     async def delete_document(self, transcript_id: str) -> bool:
         result = await self.collection.delete_many({"sanity_data.id": transcript_id})

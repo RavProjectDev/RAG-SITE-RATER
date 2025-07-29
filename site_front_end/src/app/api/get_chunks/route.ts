@@ -13,8 +13,10 @@ export async function POST(req: NextRequest) {
     }
     const data = await response.json();
     // Map the first 3 items from the response to chunks
-    const chunks = Array.isArray(data) ? data.slice(0, 3).map(item => ({ ...item })) : [];
-    return NextResponse.json({ chunks });
+    const documents = data.documents;
+    const chunks = Array.isArray(documents) ? documents.slice(0, 3).map(item => ({ ...item })) : [];
+    const embedding_type = data.embedding_type;
+    return NextResponse.json({ chunks, embedding_type });
   } catch (error) {
     console.error('Error in get_chunks:', error);
     return NextResponse.json({ error: (error instanceof Error ? error.message : 'Unknown error'), chunks: [] }, { status: 500 });

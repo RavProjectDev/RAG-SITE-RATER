@@ -12,6 +12,7 @@ from rag.app.exceptions.embedding import EmbeddingException
 from rag.app.models.data import DocumentModel
 from rag.app.schemas.data import EmbeddingConfiguration
 from rag.app.schemas.form import RatingsModel, UploadRatingsRequest
+from rag.app.schemas.response import FormGetChunksResponse
 from rag.app.services.embedding import generate_embedding
 from rag.app.services.preprocess.user_input import pre_process_user_query
 from rag.app.core.config import COLLECTIONS, get_settings
@@ -24,7 +25,7 @@ router = APIRouter(
 
 @router.get(
     "/{question}",
-    response_model=list[DocumentModel],
+    response_model=FormGetChunksResponse,
 )
 async def get_chunks(
     app_state: Request,
@@ -33,7 +34,7 @@ async def get_chunks(
         get_embedding_configuration
     ),
     connection: EmbeddingConnection = Depends(get_embedding_conn),
-) -> list[DocumentModel]:
+) -> FormGetChunksResponse:
     # Preprocess question
     client: AsyncIOMotorClient = app_state.app.state.db_client
     collection_name = random.choice(COLLECTIONS)
@@ -70,7 +71,11 @@ async def get_chunks(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=str(e),
         )
-    return data
+
+    return FormGetChunksResponse(
+        documents=data,
+        embedding_type=collection_name,
+    )
 
 
 @router.post(
@@ -83,6 +88,7 @@ async def upload_ratings(request: UploadRatingsRequest, app_state: Request):
         model = RatingsModel(
             user_question=request.user_question,
             ratings=data,
+            embedding_type=request.embedding_type,
         )
         await collection.insert_one(model.to_dict())
     return {"success": True}

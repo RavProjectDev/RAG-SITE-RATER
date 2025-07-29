@@ -1,6 +1,6 @@
 from pydantic import BaseModel
 
-from rag.app.models.data import SanityData, Metadata
+from rag.app.models.data import SanityData, Metadata, DocumentModel
 
 
 class TranscriptData(BaseModel):
@@ -23,3 +23,8 @@ class ChatResponse(BaseModel):
 
 class UploadResponse(BaseModel):
     message: str
+
+
+class FormGetChunksResponse(BaseModel):
+    embedding_type: str
+    documents: list[DocumentModel]
