@@ -226,7 +226,7 @@ async def stream(request: Request):
         return await asyncio.wait_for(
             inner_stream(), timeout=settings.external_api_timeout
         )
-
+    # test
     except asyncio.TimeoutError:
         return JSONResponse(
             content={
