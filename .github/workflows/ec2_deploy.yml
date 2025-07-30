@@ -88,9 +88,5 @@ jobs:
             docker logs ${{ env.CONTAINER_NAME }}
             exit 1
           fi
-          
-          # Clean up old images (keep last 3)
-          echo "Cleaning up old images..."
-          docker images ${{ env.DOCKER_IMAGE }} --format "table {{.Repository}}:{{.Tag}}\t{{.ID}}\t{{.CreatedAt}}" | tail -n +2 | head -n -3 | awk '{print $2}' | xargs -r docker rmi || true
-          
+        
           echo "🚀 Deployment completed successfully!
