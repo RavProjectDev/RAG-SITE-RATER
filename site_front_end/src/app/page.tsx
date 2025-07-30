@@ -174,7 +174,9 @@ Whether you are a scholar, student, or admirer, your participation helps refine 
                 <strong>How to rate:</strong> Please rate each chunk based on how relevant it is to the question. Use a scale from 0 to 100, where:<br /><br />
                 <div className="pl-2">
                   0 = completely unrelated to the question 
+                  <br /><br />
                   50 = somewhat related or tangentially relevant
+                  <br /><br />
                   100 = highly relevant — either directly answering the question or providing strong supporting context
                 </div>
                 <br />
