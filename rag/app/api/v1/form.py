@@ -38,7 +38,6 @@ async def get_chunks(
     # Preprocess question
     client: AsyncIOMotorClient = app_state.app.state.db_client
     collection_name = random.choice(COLLECTIONS)
-    print(f"collection name: {collection_name}")
     collection = client[collection_name]
     connection: EmbeddingConnection = MongoEmbeddingStore(
         collection=collection,

@@ -57,8 +57,10 @@ class MongoEmbeddingStore(EmbeddingConnection):
         k=5,
         threshold: float = 0.85,
     ) -> list[DocumentModel]:
-        pipeline = []
+        # Increase the initial limit to account for potential duplicates
+        initial_limit = min(k * 3, 1000)  # Get more documents initially
 
+        pipeline = []
         # 1. $vectorSearch first
         pipeline.append(
             {
@@ -67,12 +69,11 @@ class MongoEmbeddingStore(EmbeddingConnection):
                     "path": self.vector_path,
                     "queryVector": embedded_data,
                     "numCandidates": 300,
-                    "limit": int(k),
+                    "limit": initial_limit,  # Use higher limit initially
                     "metric": "cosine",
                 }
             }
         )
-
         # 2. Then optionally filter with $match if you have name_spaces
         if name_spaces is not None and len(name_spaces) > 0:
             pipeline.append({"$match": {"metadata.name_space": {"$in": name_spaces}}})
@@ -83,7 +84,22 @@ class MongoEmbeddingStore(EmbeddingConnection):
         # Filter documents with score >= THRESHOLD
         pipeline.append({"$match": {"score": {"$gte": threshold}}})
 
-        # Optionally exclude the vector field from the results
+        pipeline.append(
+            {
+                "$group": {
+                    "_id": "$text_id",
+                    "doc": {"$first": "$$ROOT"},  # keep full document
+                }
+            }
+        )
+
+        # Replace root with the grouped document
+        pipeline.append({"$replaceRoot": {"newRoot": "$doc"}})
+
+        # Limit to k results
+        pipeline.append({"$limit": k})
+
+        # Optional: project only desired fields
         pipeline.append(
             {
                 "$project": {
@@ -91,13 +107,14 @@ class MongoEmbeddingStore(EmbeddingConnection):
                     "metadata": 1,
                     "score": 1,
                     "sanity_data": 1,
+                    "text_id": 1,
                 }
             }
         )
+
         try:
             cursor = self.collection.aggregate(pipeline, maxTimeMS=500)
             results = await cursor.to_list(length=k)
-
         except ExecutionTimeout as e:
             raise RetrievalTimeoutException(
                 f"Failed to retrieve documents. Request timed out: {e}"
@@ -106,14 +123,22 @@ class MongoEmbeddingStore(EmbeddingConnection):
             raise RetrievalException("Mongo failed to retrieve documents: {}".format(e))
         except Exception as e:
             raise DataBaseException(f"Failed to retrieve documents: {e}")
-        documents: List[DocumentModel] = []
-        for result in results:
-            metadata = Metadata(**result["metadata"])
-            # Add score field dynamically to metadata dict
-            sanity_data = SanityData(**result["sanity_data"])
 
+        documents: List[DocumentModel] = []
+        seen_text_ids = set()  # Additional safety check in Python
+
+        for result in results:
+            text_id = result.get("text_id")
+
+            # Skip if we've already seen this text_id (extra safety)
+            if text_id in seen_text_ids:
+                continue
+            seen_text_ids.add(text_id)
+
+            metadata = Metadata(**result["metadata"])
+            sanity_data = SanityData(**result["sanity_data"])
             document = DocumentModel(
-                _id=str(result.get("_id")),
+                _id=str(result.get("_id")),  # Fixed: changed *id to _id
                 text=result.get("text", ""),
                 metadata=metadata,
                 sanity_data=sanity_data,

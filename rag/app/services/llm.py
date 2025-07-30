@@ -185,7 +185,6 @@ async def stream_llm_response(
 
         async def _consume_stream():
             async for chunk in response:
-                print("CHUNK: ", chunk)
                 try:
                     if not chunk.choices or not chunk.choices[0].delta:
                         yield "Error: Invalid chunk structure"
