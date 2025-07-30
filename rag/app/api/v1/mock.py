@@ -3,10 +3,9 @@ import json
 
 from fastapi import APIRouter, Request, Depends
 from fastapi.responses import JSONResponse, StreamingResponse
-from pydantic import HttpUrl
 
 from rag.app.core.config import get_settings
-from rag.app.db.connections import EmbeddingConnection, MetricsConnection
+from rag.app.db.connections import EmbeddingConnection
 from rag.app.dependencies import get_embedding_conn, get_embedding_configuration
 from rag.app.exceptions.db import DataBaseException
 from rag.app.exceptions.embedding import (
@@ -15,7 +14,7 @@ from rag.app.exceptions.embedding import (
     EmbeddingAPIException,
     EmbeddingTimeOutException,
 )
-from rag.app.models.data import SanityData, Metadata, DocumentModel
+from rag.app.models.data import DocumentModel
 from rag.app.schemas.data import EmbeddingConfiguration
 from rag.app.schemas.requests import ChatRequest
 from rag.app.schemas.response import ChatResponse, TranscriptData
@@ -79,6 +78,7 @@ async def helper(
             TranscriptData(
                 sanity_data=datum.sanity_data,
                 metadata=datum.metadata,
+                score=datum.score,
             )
         )
     return transcript_data
