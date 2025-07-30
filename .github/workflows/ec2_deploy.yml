@@ -33,7 +33,6 @@ jobs:
             -e MONGODB_URI="${{ secrets.MONGODB_URI }}" \
             -e MONGODB_DB_NAME="${{ secrets.MONGODB_DB_NAME }}" \
             -e MONGODB_VECTOR_COLLECTION="${{ secrets.MONGODB_VECTOR_COLLECTION }}" \
-            -e COLLECTION_INDEX="${{ secrets.COLLECTION_INDEX }}" \
             -e GEMINI_API_KEY="${{ secrets.GEMINI_API_KEY }}" \
             -e GOOGLE_CLOUD_PROJECT_ID="${{ secrets.GOOGLE_CLOUD_PROJECT_ID }}" \
             -e VERTEX_REGION="${{ secrets.VERTEX_REGION }}" \
