@@ -95,16 +95,26 @@ async def upload_document(
     logging.info("[run] Finished uploading new document.")
 
 
+async def update_document(
+    document: SanityData,
+    connection: EmbeddingConnection,
+    embedding_configuration: EmbeddingConfiguration,
+):
+    deleted = await delete_document(document.transcript_id, connection)
+    if not deleted:
+        return
+    await upload_document(document, connection, embedding_configuration)
+
+
 async def update_documents(
     documents: list[SanityData],
     connection: EmbeddingConnection,
     embedding_configuration: EmbeddingConfiguration,
 ):
     for doc in documents:
-        deleted = await delete_document(doc.transcript_id, connection)
-        if not deleted:
-            continue
-        await upload_document(doc, connection, embedding_configuration)
+        await update_document(
+            doc, connection, embedding_configuration=embedding_configuration
+        )
 
 
 async def delete_documents(
@@ -114,5 +124,5 @@ async def delete_documents(
         await delete_document(doc.transcript_id, connection)
 
 
-async def delete_document(document_id: str, connection: EmbeddingConnection) -> bool:
-    return await connection.delete_document(document_id)
+async def delete_document(sanity_data_id: str, connection: EmbeddingConnection) -> bool:
+    return await connection.delete_document(sanity_data_id)

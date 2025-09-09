@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException
 
 from rag.app.db.connections import EmbeddingConnection
 from rag.app.dependencies import (
@@ -12,8 +12,11 @@ from rag.app.schemas.data import (
     EmbeddingConfiguration,
 )
 from rag.app.schemas.response import UploadResponse
-
-from rag.app.services.data_upload_service import upload_document
+from rag.app.services.data_upload_service import (
+    upload_document as upload_document_service,
+    delete_document as delete_document_service,
+    update_document as update_documents_service,
+)
 
 router = APIRouter()
 
@@ -62,7 +65,9 @@ async def upload_files(
           For any unexpected server-side errors.
     """
     try:
-        await upload_document(upload_request, embedding_conn, embedding_configuration)
+        await upload_document_service(
+            upload_request, embedding_conn, embedding_configuration
+        )
 
     except BaseUploadException as e:
         raise HTTPException(
@@ -86,23 +91,54 @@ async def upload_files(
 
 @router.patch("/update")
 async def update_files(
-    body: Request,
+    update_request: SanityData,
     embedding_conn: EmbeddingConnection = Depends(get_embedding_conn),
     embedding_configuration: EmbeddingConfiguration = Depends(
         get_embedding_configuration
     ),
 ):
-    print(await body.json())
-    return
+    try:
+        await update_documents_service(
+            update_request, embedding_conn, embedding_configuration
+        )
+    except BaseUploadException as e:
+        raise HTTPException(
+            status_code=e.status_code,
+            detail={
+                "message": e.message,
+                "code": e.code,
+            },
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail={
+                "code": BaseAppException.code,
+                "message": str(e),
+            },
+        )
 
 
 @router.delete("/delete")
 async def delete_files(
-    body: Request,
+    delete_request: SanityData,
     embedding_conn: EmbeddingConnection = Depends(get_embedding_conn),
-    embedding_configuration: EmbeddingConfiguration = Depends(
-        get_embedding_configuration
-    ),
 ):
-    print(await body.json())
-    return
+    try:
+        await delete_document_service(delete_request.id, embedding_conn)
+    except BaseUploadException as e:
+        raise HTTPException(
+            status_code=e.status_code,
+            detail={
+                "message": e.message,
+                "code": e.code,
+            },
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail={
+                "code": BaseAppException.code,
+                "message": str(e),
+            },
+        )

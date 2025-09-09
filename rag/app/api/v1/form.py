@@ -1,26 +1,48 @@
+import asyncio
 import random
 
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, HTTPException, Depends
+from fastapi import Request
 from fastapi.params import Path
 from motor.motor_asyncio import AsyncIOMotorClient
 from starlette import status
 
-from rag.app.db.connections import EmbeddingConnection
+from rag.app import form_data
+from rag.app.core.config import COLLECTIONS
+from rag.app.core.config import get_settings
+from rag.app.db.connections import EmbeddingConnection, MetricsConnection
 from rag.app.db.mongodb_connection import MongoEmbeddingStore
-from rag.app.dependencies import get_embedding_conn, get_embedding_configuration
-from rag.app.exceptions.embedding import EmbeddingException
-from rag.app.models.data import DocumentModel
-from rag.app.schemas.data import EmbeddingConfiguration
-from rag.app.schemas.form import RatingsModel, UploadRatingsRequest
+from rag.app.dependencies import (
+    get_embedding_conn,
+    get_metrics_conn,
+    get_embedding_configuration,
+    get_llm_configuration,
+)
+from rag.app.exceptions.embedding import (
+    EmbeddingException,
+)
+from rag.app.form_data.data import QUESTIONS
+from rag.app.models.data import DocumentModel, Prompt
+from rag.app.schemas.data import EmbeddingConfiguration, LLMModel
+from rag.app.schemas.form import (
+    RatingsModel,
+    UploadRatingsRequestCHUNK,
+    UploadRatingsRequestFULL,
+    FullResponseRankingModel,
+    DataFullUpload,
+)
+from rag.app.schemas.response import ChatResponse, TranscriptData, FormFullResponse
 from rag.app.schemas.response import FormGetChunksResponse
 from rag.app.services.embedding import generate_embedding
+from rag.app.services.form import get_all_form_data
+from rag.app.services.llm import get_llm_response, generate_prompt
 from rag.app.services.preprocess.user_input import pre_process_user_query
-from rag.app.core.config import COLLECTIONS, get_settings
 
-FORM_COLLECTION = "site_data"
-router = APIRouter(
-    prefix="",
-)
+SITE_EMBEDDING_EVAL_COLLECTION = "site_data_prompt_performance"
+SITE_FULL_PERFORMANCE_EVAL_COLLECTION = "site_data_prompt_performance"
+
+
+router = APIRouter()
 
 
 @router.get(
@@ -46,6 +68,7 @@ async def get_chunks(
     )
     cleaned_question = pre_process_user_query(question)
     # Generate embedding with metrics logging
+
     try:
         embedding = await generate_embedding(
             text=cleaned_question,
@@ -65,7 +88,7 @@ async def get_chunks(
             },
         )
     except Exception as e:
-        print(e)
+
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=str(e),
@@ -77,12 +100,22 @@ async def get_chunks(
     )
 
 
-@router.post(
-    "/upload_ratings",
+@router.get(
+    "/full/{question}",
 )
-async def upload_ratings(request: UploadRatingsRequest, app_state: Request):
+async def get_full_response(
+    app_state: Request,
+    question: str = Path(...),
+):
+    return form_data.data.data.get(question, "")
+
+
+@router.post(
+    "/upload_ratings/chunk",
+)
+async def upload_ratings(request: UploadRatingsRequestCHUNK, app_state: Request):
     client: AsyncIOMotorClient = app_state.app.state.db_client
-    collection = client[FORM_COLLECTION]
+    collection = client[SITE_EMBEDDING_EVAL_COLLECTION]
     for data in request.data:
         model = RatingsModel(
             user_question=request.user_question,
@@ -91,3 +124,75 @@ async def upload_ratings(request: UploadRatingsRequest, app_state: Request):
         )
         await collection.insert_one(model.to_dict())
     return {"success": True}
+
+
+@router.post(
+    "/upload_ratings/full",
+)
+async def upload_ratings_full(request: UploadRatingsRequestFULL, app_state: Request):
+    client: AsyncIOMotorClient = app_state.app.state.db_client
+    collection = client[SITE_FULL_PERFORMANCE_EVAL_COLLECTION]
+    for ranking in request.rankings:
+        model = FullResponseRankingModel(
+            user_question=request.user_question,
+            ranking_data=DataFullUpload(
+                prompt_id=ranking.prompt_id,
+                rank=ranking.rank,
+            ),
+        )
+        await collection.insert_one(model.to_dict())
+    return {"success": True}
+
+
+async def _generate(
+    user_question: str,
+    embedding_configuration: EmbeddingConfiguration,
+    connection: EmbeddingConnection,
+) -> tuple[list[Prompt], list[TranscriptData]]:
+    cleaned_question = pre_process_user_query(user_question)
+    try:
+        embedding = await generate_embedding(
+            text=cleaned_question,
+            configuration=embedding_configuration,
+        )
+
+    except Exception as e:
+        raise EmbeddingException(f"Unexpected embedding error: {str(e)}")
+
+    if embedding is None:
+        raise EmbeddingException(f"Could not generate embedding for {user_question}")
+
+    vector: list[float] = embedding.vector
+    try:
+        data = await connection.retrieve(
+            embedded_data=vector,
+        )
+    except Exception as e:
+        raise e
+
+    prompts: list[Prompt] = []
+    try:
+        for i in range(1, 4):
+            prompts.append(generate_prompt(cleaned_question, data, prompt_id=i))
+    except Exception as e:
+        raise
+
+    transcript_data: list[TranscriptData] = []
+    for datum in data:
+        transcript_data.append(
+            TranscriptData(
+                sanity_data=datum.sanity_data,
+                metadata=datum.metadata,
+                score=datum.score,
+            )
+        )
+
+    return prompts, transcript_data
+
+
+@router.get(
+    "/data/get_all_questions",
+)
+async def get_questions(app_state: Request):
+
+    return QUESTIONS

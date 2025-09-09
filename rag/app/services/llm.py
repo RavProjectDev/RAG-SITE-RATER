@@ -1,23 +1,9 @@
-from typing import Union
-from openai.types.chat import (
-    ChatCompletionUserMessageParam,
-    ChatCompletionSystemMessageParam,
-)
-
 import asyncio
 import logging
-
-
-from rag.app.db.connections import MetricsConnection
-from rag.app.schemas.data import LLMModel
-from rag.app.models.data import DocumentModel
-
-from rag.app.exceptions.llm import (
-    LLMBaseException,
-    LLMTimeoutException,
-    LLMConnectionException,
-)
+from contextlib import nullcontext
 from functools import lru_cache
+from typing import Union
+
 from openai import (
     AsyncOpenAI,
     APIError,
@@ -26,7 +12,21 @@ from openai import (
     APIConnectionError,
     OpenAIError,
 )
+from openai.types.chat import (
+    ChatCompletionUserMessageParam,
+    ChatCompletionSystemMessageParam,
+)
+
 from rag.app.core.config import get_settings
+from rag.app.db.connections import MetricsConnection
+from rag.app.exceptions.llm import (
+    LLMBaseException,
+    LLMTimeoutException,
+    LLMConnectionException,
+)
+from rag.app.models.data import DocumentModel, Prompt
+from rag.app.schemas.data import LLMModel
+from rag.app.services.prompts import PROMPTS
 
 
 @lru_cache()
@@ -47,15 +47,21 @@ def get_openai_client() -> AsyncOpenAI:
 
 
 async def get_llm_response(
-    metrics_connection: MetricsConnection,
     prompt: str,
     model: LLMModel = LLMModel.GPT_4,
+    metrics_connection: MetricsConnection = None,
 ) -> str:
     """
     Fetches a synchronous completion from the LLM.
     """
     data = {}
-    async with metrics_connection.timed(metric_type="LLM", data=data):
+    cm = (
+        metrics_connection.timed(metric_type="LLM", data=data)
+        if metrics_connection
+        else nullcontext()
+    )
+
+    async with cm:
         if model == LLMModel.GPT_4:
             try:
                 response, metrics = await get_gpt_response(
@@ -68,8 +74,9 @@ async def get_llm_response(
             response, metrics = get_mock_response()
         else:
             raise ValueError(f"Unsupported model: {model}")
-        data.update(metrics or {})
-        return response
+
+    data.update(metrics or {})
+    return response
 
 
 # ---------------------------------------------------------------
@@ -239,7 +246,8 @@ def generate_prompt(
     user_question: str,
     data: list[DocumentModel],
     max_tokens: int = 1500,
-) -> str:
+    prompt_id=None,
+) -> Prompt:
     """
     Constructs a prompt including retrieved context snippets.
     """
@@ -267,38 +275,21 @@ def generate_prompt(
 
     context = "\n\n".join(context_parts)
 
-    prompt_template = """
-    You are a Rav Soloveitchik expert assistant. Your primary role is to present relevant quotes and teachings from the provided context, not to interpret or explain extensively.
-
-    # Context
-    {context}
-
-    # User Question
-    {user_question}
-
-    # Instructions
-
-    1. **Quote-First Approach**: Lead with the most relevant quotes from the context that address the user's question.
-    2. **Minimal Interpretation**: Provide only brief, factual connections between quotes and the question. Avoid elaborate explanations or philosophical analysis.
-    3. **Source Everything**: Every quote must include its exact source and page number from the metadata.
-    4. **Let the Rav Speak**: Allow Rav Soloveitchik's own words to answer the question rather than your interpretations.
-    5. **Stay Within Context**: Only use information explicitly provided in the context. Do not add external knowledge about the Rav.
-    6. **Clarify When Needed**: If the question is unclear or unrelated, ask for clarification.
-
-    # Output Format
-
-    Structure your response as follows:
-    - **Brief Topic Introduction** (1-2 sentences maximum)
-    - **Relevant Quotes** with full citations, presented as:
-      > "Quote text here" 
-      > *(Source, Page X)*
-    - **Additional Supporting Quotes** if available
-    - **Minimal Summary** (1-2 sentences) connecting the quotes to the question, without extensive interpretation
-    """
+    prompt_template = get_prompt_template(prompt_id)
 
     filled_prompt = prompt_template.format(
         context=context,
         user_question=user_question,
     )
 
-    return filled_prompt
+    return Prompt(
+        value=filled_prompt,
+        id=str(prompt_id),
+    )
+
+
+def get_prompt_template(prompt: int = None) -> str:
+    if not prompt:
+        return PROMPTS["production"]
+    else:
+        return PROMPTS[str(prompt)]

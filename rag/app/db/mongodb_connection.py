@@ -136,7 +136,9 @@ class MongoEmbeddingStore(EmbeddingConnection):
             seen_text_ids.add(text_id)
 
             metadata = Metadata(**result["metadata"])
+
             sanity_data = SanityData(**result["sanity_data"])
+
             document = DocumentModel(
                 _id=str(result.get("_id")),  # Fixed: changed *id to _id
                 text=result.get("text", ""),

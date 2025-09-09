@@ -19,6 +19,11 @@ class TranscriptData(BaseModel):
 class ChatResponse(BaseModel):
     message: str
     transcript_data: list[TranscriptData]
+    prompt_id: str = None
+
+
+class FormFullResponse(BaseModel):
+    responses: list[ChatResponse]
 
 
 class UploadResponse(BaseModel):

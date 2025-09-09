@@ -25,7 +25,7 @@ from rag.app.exceptions.embedding import (
 from rag.app.exceptions.llm import (
     LLMBaseException,
 )
-from rag.app.models.data import DocumentModel
+from rag.app.models.data import DocumentModel, Prompt
 from rag.app.schemas.data import EmbeddingConfiguration, LLMModel
 from rag.app.schemas.requests import ChatRequest, TypeOfRequest
 from rag.app.schemas.response import ChatResponse, TranscriptData
@@ -81,10 +81,11 @@ async def handler(
         transcript_data: list[TranscriptData]
         prompt, transcript_data = await asyncio.wait_for(
             generate(
-                chat_request=chat_request,
+                user_question=chat_request.question,
                 embedding_configuration=embedding_configuration,
                 connection=embedding_conn,
-                metrics_connection=metrics_conn,  # Pass metrics_conn for logging
+                metrics_connection=metrics_conn,
+                name_spaces=chat_request.name_spaces,  # Pass metrics_conn for logging
             ),
             timeout=settings.external_api_timeout,
         )
@@ -96,7 +97,7 @@ async def handler(
 
                 async for chunk in stream_llm_response(
                     metrics_connection=metrics_conn,
-                    prompt=prompt,
+                    prompt=prompt.value,
                     model=llm_configuration.value,
                 ):
                     yield f"data: {json.dumps({'data': chunk})}\n\n"
@@ -112,7 +113,9 @@ async def handler(
                     model=llm_configuration,
                 )
                 return ChatResponse(
-                    message=llm_response, transcript_data=transcript_data
+                    message=llm_response,
+                    transcript_data=transcript_data,
+                    prompt_id=prompt.id,
                 )
 
         return await full_response()
@@ -135,19 +138,21 @@ async def handler(
 
 
 async def generate(
-    chat_request: ChatRequest,
+    user_question: str,
     embedding_configuration: EmbeddingConfiguration,
     connection: EmbeddingConnection,
     metrics_connection: MetricsConnection,
-) -> (str, list[TranscriptData]):
+    name_spaces: list[str] = None,
+) -> (Prompt, list[TranscriptData]):
     """
     Generate an LLM prompt and retrieve relevant context.
 
     Args:
-        chat_request: The validated chat request model.
+        user_question: The question inputted by user.
         embedding_configuration: Configuration for generating embeddings.
         connection: Database connection for retrieving documents.
         metrics_connection: Connection for logging metrics.
+        name_spaces: Name spaces optional.
 
     Returns:
         Tuple[str, List[dict]]: The generated prompt and list of metadata.
@@ -159,8 +164,6 @@ async def generate(
         LLMException: For prompt generation errors.
     """
     request_id = uuid.uuid4().hex
-    user_question: str = chat_request.question
-
     # Preprocess question
     cleaned_question = pre_process_user_query(user_question)
 
@@ -198,9 +201,9 @@ async def generate(
     ):
         try:
             data = await connection.retrieve(
-                embedded_data=vector, name_spaces=chat_request.name_spaces
+                embedded_data=vector, name_spaces=name_spaces
             )
-        except DataBaseException as e:
+        except DataBaseException:
             raise
         except Exception as e:
             raise DataBaseException(f"Database retrieval failed: {str(e)}")

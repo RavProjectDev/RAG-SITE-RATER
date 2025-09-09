@@ -12,10 +12,27 @@ class UploadRatingsDocument(BaseModel):
     rating: float
 
 
-class UploadRatingsRequest(BaseModel):
+class UploadFormData(BaseModel):
+    documentData: DocumentModel
+    rating: int
+    prompt_id: int
+
+
+class UploadRatingsRequestCHUNK(BaseModel):
     user_question: str
     data: list[tuple[DocumentModel, int]]
     embedding_type: str
+
+
+class DataFullUpload(BaseModel):
+    prompt_id: str
+    rank: int
+
+
+class UploadRatingsRequestFULL(BaseModel):
+    model_config = {"extra": "allow"}
+    user_question: str
+    rankings: list[DataFullUpload]
 
 
 class RatingsModel(BaseModel):
@@ -29,6 +46,18 @@ class RatingsModel(BaseModel):
             "document": self.ratings[0].to_dict(),
             "rating": self.ratings[1],
             "embedding_type": self.embedding_type,
+        }
+
+
+class FullResponseRankingModel(BaseModel):
+    model_config = {"extra": "allow"}
+    user_question: str
+    ranking_data: DataFullUpload
+
+    def to_dict(self):
+        return {
+            "user_question": self.user_question,
+            "ranking_data": self.ranking_data.model_dump(),
         }
 
 

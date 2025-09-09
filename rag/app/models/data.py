@@ -10,19 +10,18 @@ class Metadata(BaseModel):
 
 class SanityData(BaseModel):
     id: str
+    updated_at: str = Field(alias="_updatedAt", default=None)
     slug: str
     title: str
     transcriptURL: HttpUrl
-    hash: str
 
-    def to_dict(self) -> dict:
-        return {
-            "id": self.id,
-            "slug": self.slug,
-            "title": self.title,
-            "transcriptURL": str(self.transcriptURL),
-            "hash": self.hash,
-        }
+    class Config:
+        allow_population_by_field_name = True
+
+
+class Prompt(BaseModel):
+    id: str
+    value: str
 
 
 class DocumentModel(BaseModel):
