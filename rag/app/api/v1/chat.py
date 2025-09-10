@@ -2,7 +2,7 @@ import asyncio
 import json
 import uuid
 
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, HTTPException, Depends, Request
 from fastapi.responses import StreamingResponse
 from starlette import status
 
@@ -28,7 +28,7 @@ from rag.app.exceptions.llm import (
 from rag.app.models.data import DocumentModel, Prompt
 from rag.app.schemas.data import EmbeddingConfiguration, LLMModel
 from rag.app.schemas.requests import ChatRequest, TypeOfRequest
-from rag.app.schemas.response import ChatResponse, TranscriptData
+from rag.app.schemas.response import ChatResponse, TranscriptData, ErrorResponse
 from rag.app.services.embedding import generate_embedding
 from rag.app.services.llm import stream_llm_response, generate_prompt, get_llm_response
 from rag.app.services.preprocess.user_input import pre_process_user_query
@@ -39,14 +39,22 @@ router = APIRouter()
 @router.post(
     "/",
     response_model=ChatResponse,
+    summary="Create chat completion (streaming or full)",
+    description=(
+        "Returns a full completion or a Server-Sent Events stream based on type_of_request.\n"
+        "SSE emits 'transcript_data' first, then incremental 'data' tokens, and terminates with [DONE]."
+    ),
     responses={
         200: {
             "description": "Returns ChatResponse (JSON) or StreamingResponse (SSE)",
             "content": {
-                # Let FastAPI generate the JSON schema
                 "text/event-stream": {"schema": {"type": "string", "format": "binary"}}
             },
-        }
+        },
+        400: {"model": ErrorResponse, "description": "Bad request"},
+        408: {"model": ErrorResponse, "description": "Timeout"},
+        422: {"model": ErrorResponse, "description": "Validation error"},
+        500: {"model": ErrorResponse, "description": "Internal server error"},
     },
 )
 async def handler(

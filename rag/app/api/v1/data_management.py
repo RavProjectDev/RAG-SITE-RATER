@@ -11,7 +11,7 @@ from rag.app.models.data import SanityData
 from rag.app.schemas.data import (
     EmbeddingConfiguration,
 )
-from rag.app.schemas.response import UploadResponse
+from rag.app.schemas.response import UploadResponse, ErrorResponse, SuccessResponse
 from rag.app.services.data_upload_service import (
     upload_document as upload_document_service,
     delete_document as delete_document_service,
@@ -21,7 +21,19 @@ from rag.app.services.data_upload_service import (
 router = APIRouter()
 
 
-@router.post("/create")
+@router.post(
+    "/create",
+    response_model=UploadResponse,
+    summary="Upload a new transcript document",
+    description="Creates a new document by fetching transcript and storing chunk embeddings.",
+    responses={
+        200: {"model": UploadResponse},
+        400: {"model": ErrorResponse},
+        404: {"model": ErrorResponse},
+        422: {"model": ErrorResponse},
+        500: {"model": ErrorResponse},
+    },
+)
 async def upload_files(
     upload_request: SanityData,
     embedding_conn: EmbeddingConnection = Depends(get_embedding_conn),
@@ -89,7 +101,12 @@ async def upload_files(
     return UploadResponse(message="success")
 
 
-@router.patch("/update")
+@router.patch(
+    "/update",
+    response_model=SuccessResponse,
+    summary="Update an existing document",
+    description="Re-embed and update an existing document from its transcript source.",
+)
 async def update_files(
     update_request: SanityData,
     embedding_conn: EmbeddingConnection = Depends(get_embedding_conn),
@@ -117,9 +134,15 @@ async def update_files(
                 "message": str(e),
             },
         )
+    return SuccessResponse(success=True, message="updated")
 
 
-@router.delete("/delete")
+@router.delete(
+    "/delete",
+    response_model=SuccessResponse,
+    summary="Delete a document",
+    description="Deletes a document and its embeddings by id.",
+)
 async def delete_files(
     delete_request: SanityData,
     embedding_conn: EmbeddingConnection = Depends(get_embedding_conn),
@@ -142,3 +165,4 @@ async def delete_files(
                 "message": str(e),
             },
         )
+    return SuccessResponse(success=True, message="deleted")

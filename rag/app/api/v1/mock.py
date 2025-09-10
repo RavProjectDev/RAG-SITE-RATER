@@ -17,13 +17,18 @@ from rag.app.exceptions.embedding import (
 from rag.app.models.data import DocumentModel
 from rag.app.schemas.data import EmbeddingConfiguration
 from rag.app.schemas.requests import ChatRequest
-from rag.app.schemas.response import ChatResponse, TranscriptData
+from rag.app.schemas.response import ChatResponse, TranscriptData, ErrorResponse
 from rag.app.services.embedding import generate_embedding
 
 router = APIRouter()
 
 
-@router.post("/full", response_model=ChatResponse)
+@router.post(
+    "/full",
+    response_model=ChatResponse,
+    summary="Mock full chat response",
+    description="Returns a delayed echo of the question with synthesized transcript data.",
+)
 async def stream(
     request: ChatRequest,
     embedding_conn: EmbeddingConnection = Depends(get_embedding_conn),
@@ -84,7 +89,11 @@ async def helper(
     return transcript_data
 
 
-@router.post("/stream")
+@router.post(
+    "/stream",
+    summary="Mock streaming chat response",
+    description="Simulates SSE stream for frontend testing; optionally triggers an error mid-stream.",
+)
 async def stream(request: Request):
     """
     Simulated streaming chat endpoint for frontend testing.

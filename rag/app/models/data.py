@@ -1,4 +1,5 @@
 from pydantic import BaseModel, Field, HttpUrl
+from typing import Optional
 
 
 class Metadata(BaseModel):
@@ -10,13 +11,21 @@ class Metadata(BaseModel):
 
 class SanityData(BaseModel):
     id: str
-    updated_at: str = Field(alias="_updatedAt", default=None)
+    updated_at: Optional[str] = Field(alias="_updatedAt", default=None)
     slug: str
     title: str
     transcriptURL: HttpUrl
+    hash: str
 
     class Config:
         allow_population_by_field_name = True
+
+    def to_dict(self) -> dict:
+        data = self.model_dump(by_alias=True)
+        # Ensure URL is serialized as string
+        if "transcriptURL" in data:
+            data["transcriptURL"] = str(data["transcriptURL"])
+        return data
 
 
 class Prompt(BaseModel):

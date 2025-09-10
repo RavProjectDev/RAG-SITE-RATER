@@ -1,7 +1,12 @@
 import time
 import logging
+import uuid
 from contextlib import asynccontextmanager
+from typing import Any
 from fastapi import FastAPI, Request
+from fastapi import HTTPException as FastAPIHTTPException
+from fastapi.exceptions import RequestValidationError
+from fastapi.responses import JSONResponse
 from motor.motor_asyncio import AsyncIOMotorClient
 import certifi
 from fastapi.middleware.cors import CORSMiddleware
@@ -22,6 +27,7 @@ from rag.app.db.mongodb_connection import (
 )
 from rag.app.core.config import get_settings, Environment
 from rag.app.core.scheduler import start_scheduler
+from rag.app.schemas.response import ErrorResponse
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
@@ -68,11 +74,20 @@ async def lifespan(app: FastAPI):
         client.close()
 
 
-app = FastAPI(lifespan=lifespan)
+app = FastAPI(
+    title="RAV RAG API",
+    version="1.0.0",
+    description=(
+        "Production-grade API for RAG chat, data upload and evaluation.\n\n"
+        "This service provides chat completion with retrieval augmentation,"
+        " background sync, and endpoints for evaluation data collection."
+    ),
+    lifespan=lifespan,
+)
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # or specify list of allowed origins
+    allow_origins=["*"],  # tighten in production by env
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -81,37 +96,133 @@ app.add_middleware(
 
 @app.middleware("http")
 async def log_requests(request: Request, call_next):
+    """Middleware to enrich each request with a correlation id and log timings.
+
+    In PRD, it also sends timing metrics to the metrics sink and exceptions to the
+    exceptions logger. Correlation id is propagated via X-Request-ID header.
+    """
+    request_id = uuid.uuid4().hex
+    request.state.request_id = request_id
+
     settings = get_settings()
-    if settings.environment != Environment.PRD:
-        return await call_next(request)
 
     start = time.perf_counter()
-    response = await call_next(request)
-    duration = time.perf_counter() - start
-    data = {
-        "endpoint": request.url.path,
-        "method": request.method,
-        "status_code": response.status_code,
-        "duration": duration,  # Store as float
-    }
-    if response.status_code == 200:
-        metrics_connection: MetricsConnection = request.app.state.metrics_connection
-        await metrics_connection.log(metric_type="endpoint_timing", data=data)
-    else:
+    try:
+        response = await call_next(request)
+    finally:
+        duration = time.perf_counter() - start
+        data = {
+            "endpoint": request.url.path,
+            "method": request.method,
+            "status_code": getattr(locals().get("response", None), "status_code", None),
+            "duration": duration,
+            "request_id": request_id,
+        }
+        logger.info(
+            f"{request.method} {request.url.path} completed in {duration:.4f}s [request_id={request_id}]"
+        )
+        if settings.environment == Environment.PRD and hasattr(
+            request.app.state, "metrics_connection"
+        ):
+            try:
+                metrics_connection: MetricsConnection = (
+                    request.app.state.metrics_connection
+                )
+                await metrics_connection.log(metric_type="endpoint_timing", data=data)
+            except Exception:
+                # avoid cascading failures
+                pass
+
+    if "response" in locals():
+        response.headers["X-Request-ID"] = request_id
+        return response
+    # If response was never created due to an exception, return generic 500 here.
+    payload = ErrorResponse(
+        code="internal_server_error", message="Unhandled error", request_id=request_id
+    ).model_dump()
+    return JSONResponse(status_code=500, content=payload)
+
+
+@app.exception_handler(Exception)
+async def unhandled_exception_handler(request: Request, exc: Exception):
+    """Catch-all exception handler to ensure consistent error responses."""
+    request_id = getattr(request.state, "request_id", None)
+    try:
         exceptions_logger: ExceptionsLogger = request.app.state.exceptions_logger
         await exceptions_logger.log(
-            exception_code=None,
-            data=data,
+            exception_code=getattr(exc, "code", None),
+            data={
+                "endpoint": request.url.path,
+                "method": request.method,
+                "error": str(exc),
+                "request_id": request_id,
+            },
         )
-        logger.info(f"{request.method} {request.url.path} completed in {duration:.4f}s")
-    logger.info(f"{request.method} {request.url.path} completed in {duration:.4f}s")
-    return response
+    except Exception:
+        pass
+    payload = ErrorResponse(
+        code=getattr(exc, "code", "internal_server_error"),
+        message=str(exc),
+        request_id=request_id,
+    ).model_dump()
+    return JSONResponse(status_code=500, content=payload)
 
 
-app.include_router(chat_router, prefix="/api/v1/chat")
-app.include_router(upload_router, prefix="/api/v1/upload")
-app.include_router(health_router, prefix="/api/v1/health")
-app.include_router(mock_router, prefix="/api/v1/test")
-app.include_router(docs_router, prefix="")
+@app.exception_handler(FastAPIHTTPException)
+async def http_exception_handler(request: Request, exc: FastAPIHTTPException):
+    """Normalize HTTPException into ErrorResponse shape."""
+    request_id = getattr(request.state, "request_id", None)
+    detail: Any = exc.detail
+    if isinstance(detail, dict):
+        code = detail.get("code", "http_error")
+        message = detail.get("message") or detail.get("error") or str(detail)
+        extra = {
+            k: v for k, v in detail.items() if k not in {"code", "message", "error"}
+        }
+    else:
+        code = "http_error"
+        message = str(detail)
+        extra = None
+    try:
+        exceptions_logger: ExceptionsLogger = request.app.state.exceptions_logger
+        await exceptions_logger.log(
+            exception_code=code,
+            data={
+                "endpoint": request.url.path,
+                "method": request.method,
+                "error": message,
+                "request_id": request_id,
+                "status_code": exc.status_code,
+            },
+        )
+    except Exception:
+        pass
+    payload = ErrorResponse(
+        code=code, message=message, request_id=request_id, details=extra
+    ).model_dump()
+    return JSONResponse(status_code=exc.status_code, content=payload)
 
-app.include_router(form_router, prefix="/form")
+
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(request: Request, exc: RequestValidationError):
+    """Return validation errors in a consistent envelope."""
+    request_id = getattr(request.state, "request_id", None)
+    details = {"errors": exc.errors()}
+    payload = ErrorResponse(
+        code="validation_error",
+        message="Invalid request",
+        request_id=request_id,
+        details=details,
+    ).model_dump()
+    return JSONResponse(status_code=422, content=payload)
+
+
+app.include_router(chat_router, prefix="/api/v1/chat", tags=["chat"])
+app.include_router(upload_router, prefix="/api/v1/upload", tags=["data-management"])
+app.include_router(health_router, prefix="/api/v1/health", tags=["health"])
+app.include_router(mock_router, prefix="/api/v1/test", tags=["mock"])
+app.include_router(
+    docs_router, prefix="", tags=["docs"]
+)  # only path-level tags applied within router
+
+app.include_router(form_router, prefix="/form", tags=["form"])

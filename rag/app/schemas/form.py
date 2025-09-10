@@ -33,6 +33,7 @@ class UploadRatingsRequestFULL(BaseModel):
     model_config = {"extra": "allow"}
     user_question: str
     rankings: list[DataFullUpload]
+    comments: str | None = None
 
 
 class RatingsModel(BaseModel):

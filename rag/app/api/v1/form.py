@@ -32,7 +32,11 @@ from rag.app.schemas.form import (
     DataFullUpload,
 )
 from rag.app.schemas.response import ChatResponse, TranscriptData, FormFullResponse
-from rag.app.schemas.response import FormGetChunksResponse
+from rag.app.schemas.response import (
+    FormGetChunksResponse,
+    ErrorResponse,
+    SuccessResponse,
+)
 from rag.app.services.embedding import generate_embedding
 from rag.app.services.form import get_all_form_data
 from rag.app.services.llm import get_llm_response, generate_prompt
@@ -48,6 +52,13 @@ router = APIRouter()
 @router.get(
     "/{question}",
     response_model=FormGetChunksResponse,
+    summary="Retrieve nearest chunks for a question",
+    description="Generates an embedding for the question and returns the most similar chunks from a random collection.",
+    responses={
+        200: {"model": FormGetChunksResponse},
+        422: {"model": ErrorResponse},
+        500: {"model": ErrorResponse},
+    },
 )
 async def get_chunks(
     app_state: Request,
@@ -102,6 +113,8 @@ async def get_chunks(
 
 @router.get(
     "/full/{question}",
+    summary="Return stored full response for a question (if any)",
+    description="Returns a pre-cached full response for the given question if present.",
 )
 async def get_full_response(
     app_state: Request,
@@ -112,6 +125,9 @@ async def get_full_response(
 
 @router.post(
     "/upload_ratings/chunk",
+    response_model=SuccessResponse,
+    summary="Upload chunk-level ratings",
+    description="Store per-chunk ratings for a user question and embedding type.",
 )
 async def upload_ratings(request: UploadRatingsRequestCHUNK, app_state: Request):
     client: AsyncIOMotorClient = app_state.app.state.db_client
@@ -123,11 +139,14 @@ async def upload_ratings(request: UploadRatingsRequestCHUNK, app_state: Request)
             embedding_type=request.embedding_type,
         )
         await collection.insert_one(model.to_dict())
-    return {"success": True}
+    return SuccessResponse(success=True, message="ratings uploaded")
 
 
 @router.post(
     "/upload_ratings/full",
+    response_model=SuccessResponse,
+    summary="Upload full-response ranking",
+    description="Stores ranking for full LLM responses associated with prompt ids.",
 )
 async def upload_ratings_full(request: UploadRatingsRequestFULL, app_state: Request):
     client: AsyncIOMotorClient = app_state.app.state.db_client
@@ -141,7 +160,8 @@ async def upload_ratings_full(request: UploadRatingsRequestFULL, app_state: Requ
             ),
         )
         await collection.insert_one(model.to_dict())
-    return {"success": True}
+    collection.insert_one({"comments": request.comments})
+    return SuccessResponse(success=True, message="full rankings uploaded")
 
 
 async def _generate(
@@ -192,6 +212,8 @@ async def _generate(
 
 @router.get(
     "/data/get_all_questions",
+    response_model=list[str],
+    summary="List all evaluation questions",
 )
 async def get_questions(app_state: Request):
 

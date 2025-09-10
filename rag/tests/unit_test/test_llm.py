@@ -113,7 +113,7 @@ async def test_get_llm_response_gpt4_success():
         "rag.app.services.llm.get_gpt_response",
         return_value=(mock_response, mock_metrics_data),
     ):
-        response = await get_llm_response(mock_metrics, prompt, LLMModel.GPT_4)
+        response = await get_llm_response(prompt, LLMModel.GPT_4, mock_metrics)
         assert response == mock_response
 
 
@@ -123,7 +123,7 @@ async def test_get_llm_response_mock():
     mock_response, mock_metrics = get_mock_response()
     mock_metrics = MockMetricsConnection()
 
-    response = await get_llm_response(mock_metrics, prompt, LLMModel.MOCK)
+    response = await get_llm_response(prompt, LLMModel.MOCK, mock_metrics)
     assert response == mock_response
     assert response.startswith("Lorem ipsum dolor sit amet")
 
@@ -132,7 +132,7 @@ async def test_get_llm_response_mock():
 async def test_get_llm_response_unsupported_model():
     mock_metrics = MagicMock(spec=MetricsConnection)
     with pytest.raises(ValueError, match="Unsupported model"):
-        await get_llm_response(mock_metrics, "Test prompt", "invalid_model")
+        await get_llm_response("Test prompt", "invalid_model", mock_metrics)
 
 
 @pytest.mark.asyncio
@@ -238,10 +238,10 @@ def test_generate_prompt_no_context():
     user_question = "What is Rav Soloveitchik's view on modernity?"
     data = []
     prompt = generate_prompt(user_question, data)
-    assert "You are a Rav Soloveitchik expert" in prompt
-    assert user_question in prompt
-    assert "# Context" in prompt
-    assert not any("Source:" in prompt for _ in data)
+    assert "You are a Rav Soloveitchik expert" in prompt.value
+    assert user_question in prompt.value
+    assert "# Context" in prompt.value
+    assert not any("Source:" in prompt.value for _ in data)
 
 
 def test_generate_prompt_with_context():
@@ -284,13 +284,13 @@ def test_generate_prompt_with_context():
     prompt = generate_prompt(user_question, data, max_tokens=1000)
     assert (
         '"Modernity must be approached with critical engagement."\n(Source: chunk_size: 100, time_start: 00:00, time_end: 01:00, name_space: lecture)'
-        in prompt
+        in prompt.value
     )
     assert (
         '"Faith and reason are complementary."\n(Source: chunk_size: 150, time_start: 01:00, time_end: 02:00, name_space: book)'
-        in prompt
+        in prompt.value
     )
-    assert user_question in prompt
+    assert user_question in prompt.value
 
 
 def test_generate_prompt_token_limit():
@@ -331,8 +331,8 @@ def test_generate_prompt_token_limit():
         ),
     ]
     prompt = generate_prompt(user_question, data, max_tokens=100)
-    assert f'{"A" * 50}' in prompt
+    assert f'{"A" * 50}' in prompt.value
     assert (
         f'{"B" * 1000}\n(Source: chunk_size: 100, time_start: 00:00, time_end: 01:00, name_space: lecture)'
-        not in prompt
+        not in prompt.value
     )

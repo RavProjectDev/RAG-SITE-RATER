@@ -11,7 +11,13 @@ class ExceptionDoc(BaseModel):
     status_code: int
 
 
-@router.get("/exceptions", response_model=list[ExceptionDoc], include_in_schema=True)
+@router.get(
+    "/exceptions",
+    response_model=list[ExceptionDoc],
+    include_in_schema=True,
+    summary="List all application exception types",
+    description="Returns the catalog of custom exceptions exposed by the API for documentation purposes.",
+)
 async def list_all_exceptions():
     docs = []
     for exc_cls in ALL_EXCEPTIONS:
