@@ -30,6 +30,7 @@ from rag.app.schemas.form import (
     UploadRatingsRequestFULL,
     FullResponseRankingModel,
     DataFullUpload,
+    CommentModel,
 )
 from rag.app.schemas.response import ChatResponse, TranscriptData, FormFullResponse
 from rag.app.schemas.response import (
@@ -160,7 +161,11 @@ async def upload_ratings_full(request: UploadRatingsRequestFULL, app_state: Requ
             ),
         )
         await collection.insert_one(model.to_dict())
-    collection.insert_one({"comments": request.comments})
+    comment_model = CommentModel(
+        comments=request.comments,
+        user_question=request.user_question,
+    )
+    collection.insert_one(comment_model.model_dump())
     return SuccessResponse(success=True, message="full rankings uploaded")
 
 

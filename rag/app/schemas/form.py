@@ -62,6 +62,11 @@ class FullResponseRankingModel(BaseModel):
         }
 
 
+class CommentModel(BaseModel):
+    comments: str
+    user_question: str
+
+
 class Ratings(BaseModel):
     user_question: str
     ratings: list[tuple[DocumentModel, int]]

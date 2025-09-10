@@ -1,19 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { BASE_URL } from '@/lib/utils';
+import { BASE_URL, GENERIC_ERROR_MESSAGE } from '@/lib/utils';
 
 // Fetch a full generated response for a given question
 export async function POST(req: NextRequest) {
   try {
     const { question } = await req.json();
     if (!question || typeof question !== 'string') {
-      return NextResponse.json({ error: 'Invalid question' }, { status: 400 });
+      return NextResponse.json({ error: GENERIC_ERROR_MESSAGE }, { status: 400 });
     }
 
     // Explicitly call the backend full-response endpoint via GET with path param
     const url = `${BASE_URL}/form/full/${encodeURIComponent(question)}`;
     const response = await fetch(url, { method: 'GET' });
     if (!response.ok) {
-      throw new Error(`Upstream error ${response.status} for ${url}`);
+      return NextResponse.json({ error: GENERIC_ERROR_MESSAGE }, { status: 502 });
     }
     const data = await response.json();
 
@@ -33,7 +33,7 @@ export async function POST(req: NextRequest) {
       return { message, transcript_data, prompt_id };
     };
 
-    let responses: Array<{ message: string; transcript_data: unknown[]; prompt_id?: string }>;
+    let responses: Array<{ message: string; transcript_data: unknown[]; prompt_id?: string }> = [];
     if (Array.isArray(data)) {
       const normalized = data.map(normalize);
       responses = normalized.map((r) => ({ ...r, prompt_id: r.prompt_id != null ? String(r.prompt_id) : undefined }));
@@ -43,14 +43,12 @@ export async function POST(req: NextRequest) {
     } else if (typeof data === 'object' && data) {
       const r = normalize(data);
       responses = [{ ...r, prompt_id: r.prompt_id != null ? String(r.prompt_id) : undefined }];
-    } else {
-      responses = [];
     }
 
     return NextResponse.json({ responses });
   } catch (error) {
     console.error('Error in get_full_response:', error);
-    return NextResponse.json({ error: (error instanceof Error ? error.message : 'Unknown error') }, { status: 500 });
+    return NextResponse.json({ error: GENERIC_ERROR_MESSAGE }, { status: 500 });
   }
 }
 

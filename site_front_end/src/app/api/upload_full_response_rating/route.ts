@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { BASE_URL } from '@/lib/utils';
+import { BASE_URL, GENERIC_ERROR_MESSAGE } from '@/lib/utils';
 
 // Upload rating for a full generated response
 export async function POST(req: NextRequest) {
@@ -8,7 +8,7 @@ export async function POST(req: NextRequest) {
     const { user_question } = body || {};
 
     if (!user_question || typeof user_question !== 'string') {
-      return NextResponse.json({ error: 'Invalid user_question' }, { status: 400 });
+      return NextResponse.json({ error: GENERIC_ERROR_MESSAGE }, { status: 400 });
     }
 
     // If a rankings array is provided, send a single request with list rankings
@@ -19,7 +19,7 @@ export async function POST(req: NextRequest) {
         .map((r: any) => ({ prompt_id: String(r.prompt_id), rank: r.rank as number }));
 
       if (rankings.length === 0) {
-        return NextResponse.json({ error: 'No valid rankings provided' }, { status: 400 });
+        return NextResponse.json({ error: GENERIC_ERROR_MESSAGE }, { status: 400 });
       }
 
       const payload = { user_question, rankings, comments: typeof body?.comments === 'string' ? body.comments : undefined } as const;
@@ -29,8 +29,7 @@ export async function POST(req: NextRequest) {
         body: JSON.stringify(payload),
       });
       if (!res.ok) {
-        const text = await res.text().catch(() => '');
-        throw new Error(`Upstream error ${res.status} for ${url}: ${text}`);
+        return NextResponse.json({ error: GENERIC_ERROR_MESSAGE }, { status: 502 });
       }
       const data = await res.json();
       return NextResponse.json(data);
@@ -39,7 +38,7 @@ export async function POST(req: NextRequest) {
     // Otherwise, fall back to single-response rating payload
     const { message, transcript_data, rating, prompt_id } = body || {};
     if (typeof rating !== 'number' || rating < 0 || rating > 100) {
-      return NextResponse.json({ error: 'Invalid rating' }, { status: 400 });
+      return NextResponse.json({ error: GENERIC_ERROR_MESSAGE }, { status: 400 });
     }
 
     const singlePayload = {
@@ -67,7 +66,7 @@ export async function POST(req: NextRequest) {
         body: JSON.stringify(payload),
       });
       if (!res.ok) {
-        throw new Error(`Upstream error ${res.status} for ${url}`);
+        return NextResponse.json({ error: GENERIC_ERROR_MESSAGE }, { status: 502 });
       }
       const data = await res.json();
       return NextResponse.json(data);
@@ -81,13 +80,13 @@ export async function POST(req: NextRequest) {
       body: JSON.stringify(singlePayload),
     });
     if (!res.ok) {
-      throw new Error(`Upstream error ${res.status} for ${legacyUrl}`);
+      return NextResponse.json({ error: GENERIC_ERROR_MESSAGE }, { status: 502 });
     }
     const data = await res.json();
     return NextResponse.json(data);
   } catch (error) {
     console.error('Error in upload_full_response_rating:', error);
-    return NextResponse.json({ error: (error instanceof Error ? error.message : 'Unknown error') }, { status: 500 });
+    return NextResponse.json({ error: GENERIC_ERROR_MESSAGE }, { status: 500 });
   }
 }
 

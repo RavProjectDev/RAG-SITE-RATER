@@ -3,7 +3,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { BASE_URL } from "@/lib/utils";
+import { BASE_URL, GENERIC_ERROR_MESSAGE, safeFetch } from "@/lib/utils";
 
 // Rating component for 0–100 using a number input (clicker)
 function Rating({ value, onChange }: { value: number; onChange: (v: number) => void }) {
@@ -82,15 +82,14 @@ export default function Home() {
     (async () => {
       try {
         setQuestionsLoading(true);
-        const res = await fetch(`/api/form/questions`);
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const res = await safeFetch(`/api/form/questions`);
         const data = await res.json();
         const arr = Array.isArray(data) ? data : (Array.isArray((data as any)?.questions) ? (data as any).questions : []);
         if (isMounted) setQuestions(arr);
-        if (arr.length === 0) setQuestionsError('No questions returned.');
+        if (arr.length === 0) setQuestionsError(GENERIC_ERROR_MESSAGE);
       } catch (e) {
         console.error("Failed to load questions", e);
-        if (isMounted) setQuestionsError('Failed to load questions.');
+        if (isMounted) setQuestionsError(GENERIC_ERROR_MESSAGE);
       } finally {
         if (isMounted) setQuestionsLoading(false);
       }
@@ -106,14 +105,14 @@ export default function Home() {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch("/api/get_chunks", {
+      const res = await safeFetch("/api/get_chunks", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ question }),
       });
       const data = await res.json();
       if (data.error) {
-        setError("Failed to fetch chunks: " + data.error);
+        setError(GENERIC_ERROR_MESSAGE);
         setChunks([]);
         return;
       }
@@ -122,7 +121,7 @@ export default function Home() {
       setRatings({});
       setStep("rate");
     } catch (err) {
-      setError("Failed to fetch chunks: " + err);
+      setError(GENERIC_ERROR_MESSAGE);
     } finally {
       setLoading(false);
     }
@@ -136,7 +135,7 @@ export default function Home() {
     try {
       // Optimistic UI: go to done immediately
       setStep("done");
-      await fetch("/api/upload_ratings", {
+      await safeFetch("/api/upload_ratings", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -150,7 +149,7 @@ export default function Home() {
         }),
       });
     } catch (err) {
-      setError("Failed to upload ratings: " + err);
+      setError(GENERIC_ERROR_MESSAGE);
       setStep("rate"); // Rollback
     } finally {
       setLoading(false);
@@ -189,7 +188,7 @@ Whether you are a scholar, student, or admirer, your participation helps refine 
             {questionsLoading ? (
               <div className="text-sm text-muted-foreground">Loading questions…</div>
             ) : questions.length === 0 ? (
-              <div className="text-sm text-red-600">{questionsError || 'No questions available.'}</div>
+              <div className="text-sm text-red-600">{questionsError || GENERIC_ERROR_MESSAGE}</div>
             ) : (
               <div className="flex flex-col gap-2 max-h-80 overflow-y-auto">
                 {questions.map((q, idx) => (

@@ -3,7 +3,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { BASE_URL } from "@/lib/utils";
+import { BASE_URL, GENERIC_ERROR_MESSAGE, safeFetch } from "@/lib/utils";
 
 type TranscriptData = {
   sanity_data: {
@@ -88,15 +88,14 @@ export default function GetFullResponsePage() {
     (async () => {
       try {
         setQuestionsLoading(true);
-        const res = await fetch(`/api/form/questions`);
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const res = await safeFetch(`/api/form/questions`);
         const data = await res.json();
         const arr = Array.isArray(data) ? data : (Array.isArray((data as any)?.questions) ? (data as any).questions : []);
         if (isMounted) setQuestions(arr);
-        if (arr.length === 0) setQuestionsError('No questions returned.');
+        if (arr.length === 0) setQuestionsError(GENERIC_ERROR_MESSAGE);
       } catch (e) {
         console.error("Failed to load questions", e);
-        if (isMounted) setQuestionsError('Failed to load questions.');
+        if (isMounted) setQuestionsError(GENERIC_ERROR_MESSAGE);
       } finally {
         if (isMounted) setQuestionsLoading(false);
       }
@@ -111,14 +110,14 @@ export default function GetFullResponsePage() {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch("/api/get_full_response", {
+      const res = await safeFetch("/api/get_full_response", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ question }),
       });
       const data = await res.json();
       if (data.error) {
-        setError("Failed to fetch full response: " + data.error);
+        setError(GENERIC_ERROR_MESSAGE);
         setResponses([]);
         return;
       }
@@ -126,7 +125,7 @@ export default function GetFullResponsePage() {
       setRanks({});
       setStep("view");
     } catch (err) {
-      setError("Failed to fetch full response: " + err);
+      setError(GENERIC_ERROR_MESSAGE);
     } finally {
       setLoading(false);
     }
@@ -143,7 +142,7 @@ export default function GetFullResponsePage() {
         prompt_id: r.prompt_id,
         rank: ranks[idx],
       }));
-      await fetch("/api/upload_full_response_rating", {
+      await safeFetch("/api/upload_full_response_rating", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -153,7 +152,7 @@ export default function GetFullResponsePage() {
         }),
       });
     } catch (err) {
-      setError("Failed to upload rating: " + err);
+      setError(GENERIC_ERROR_MESSAGE);
       setStep("view");
     } finally {
       setLoading(false);
@@ -189,7 +188,7 @@ export default function GetFullResponsePage() {
             {questionsLoading ? (
               <div className="text-sm text-muted-foreground">Loading questions…</div>
             ) : questions.length === 0 ? (
-              <div className="text-sm text-red-600">{questionsError || 'No questions available.'}</div>
+              <div className="text-sm text-red-600">{questionsError || GENERIC_ERROR_MESSAGE}</div>
             ) : (
               <div className="flex flex-col gap-2 max-h-80 overflow-y-auto">
                 {questions.map((q, idx) => (

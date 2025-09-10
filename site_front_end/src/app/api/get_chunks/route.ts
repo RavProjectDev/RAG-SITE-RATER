@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { BASE_URL } from '@/lib/utils';
+import { BASE_URL, GENERIC_ERROR_MESSAGE } from '@/lib/utils';
 
 export async function POST(req: NextRequest) {
   try {
@@ -10,7 +10,7 @@ export async function POST(req: NextRequest) {
     });
     if (!response.ok) {
       console.error(`Upstream error: ${response.status}`);
-      throw new Error(`Upstream error: ${response.status}`);
+      return NextResponse.json({ error: GENERIC_ERROR_MESSAGE, chunks: [] }, { status: 502 });
     }
     const data = await response.json();
     // Map the first 5 items from the response to chunks
@@ -20,6 +20,6 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ chunks, embedding_type });
   } catch (error) {
     console.error('Error in get_chunks:', error);
-    return NextResponse.json({ error: (error instanceof Error ? error.message : 'Unknown error'), chunks: [] }, { status: 500 });
+    return NextResponse.json({ error: GENERIC_ERROR_MESSAGE, chunks: [] }, { status: 500 });
   }
 }
