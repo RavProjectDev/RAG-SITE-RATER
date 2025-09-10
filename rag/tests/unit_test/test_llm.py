@@ -4,8 +4,7 @@ from unittest.mock import AsyncMock, patch, MagicMock
 
 import pytest
 from openai.types import CompletionUsage
-from openai.types.chat import ChatCompletion, ChatCompletionChunk
-from openai.types.chat.chat_completion_chunk import Choice, ChoiceDelta
+from openai.types.chat import ChatCompletion
 from openai.types.chat.chat_completion_message import ChatCompletionMessage
 
 from rag.app.db.connections import MetricsConnection
