@@ -48,7 +48,7 @@ jobs:
           echo "Cleaning up old containers and images..."
           docker stop ${{ env.CONTAINER_NAME }} 2>/dev/null || true
           docker rm ${{ env.CONTAINER_NAME }} 2>/dev/null || true
-          docker image prune -f
+          docker system prune -af --volumes
           
           # Pull the latest image (force pull)
           echo "Pulling latest Docker image..."
