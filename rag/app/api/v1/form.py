@@ -42,7 +42,7 @@ from rag.app.services.form import get_all_form_data
 from rag.app.services.llm import get_llm_response, generate_prompt
 from rag.app.services.preprocess.user_input import pre_process_user_query
 
-SITE_EMBEDDING_EVAL_COLLECTION = "site_data_prompt_performance"
+SITE_EMBEDDING_EVAL_COLLECTION = "site_data_chunking_perfromance"
 SITE_FULL_PERFORMANCE_EVAL_COLLECTION = "site_data_prompt_performance"
 
 
