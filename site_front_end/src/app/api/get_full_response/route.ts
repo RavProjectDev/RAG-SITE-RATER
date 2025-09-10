@@ -18,21 +18,28 @@ export async function POST(req: NextRequest) {
     const data = await response.json();
 
     // Normalize to a simple shape { responses: [{ message, transcript_data, prompt_id }] }
-    const normalize = (item: any) => {
+    type Normalized = { message: string; transcript_data: unknown[]; prompt_id?: string | number };
+    const normalize = (item: unknown): Normalized => {
+      if (typeof item !== 'object' || item === null) {
+        return { message: '', transcript_data: [] };
+      }
+      const obj = item as Record<string, unknown>;
       const message =
-        typeof item?.llm_response === 'string' ? item.llm_response :
-        (typeof item?.message === 'string' ? item.message : '');
-      const transcript_data = Array.isArray(item?.transcript_data) ? item.transcript_data : [];
-      const promptIdRaw = item?.prompt_id;
+        typeof obj.llm_response === 'string' ? obj.llm_response :
+        (typeof obj.message === 'string' ? obj.message : '');
+      const transcript_data = Array.isArray(obj.transcript_data) ? obj.transcript_data : [];
+      const promptIdRaw = obj.prompt_id;
       const prompt_id = (typeof promptIdRaw === 'number' || typeof promptIdRaw === 'string') ? promptIdRaw : undefined;
       return { message, transcript_data, prompt_id };
     };
 
     let responses: Array<{ message: string; transcript_data: unknown[]; prompt_id?: string }>;
     if (Array.isArray(data)) {
-      responses = data.map(normalize).map(r => ({ ...r, prompt_id: r.prompt_id != null ? String(r.prompt_id) : undefined }));
-    } else if (Array.isArray(data?.responses)) {
-      responses = data.responses.map(normalize).map((r: any) => ({ ...r, prompt_id: r.prompt_id != null ? String(r.prompt_id) : undefined }));
+      const normalized = data.map(normalize);
+      responses = normalized.map((r) => ({ ...r, prompt_id: r.prompt_id != null ? String(r.prompt_id) : undefined }));
+    } else if (typeof data === 'object' && data !== null && Array.isArray((data as Record<string, unknown>).responses)) {
+      const normalized = (data as Record<string, unknown>).responses as unknown[];
+      responses = normalized.map(normalize).map((r) => ({ ...r, prompt_id: r.prompt_id != null ? String(r.prompt_id) : undefined }));
     } else if (typeof data === 'object' && data) {
       const r = normalize(data);
       responses = [{ ...r, prompt_id: r.prompt_id != null ? String(r.prompt_id) : undefined }];
