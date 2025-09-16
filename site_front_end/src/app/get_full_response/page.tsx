@@ -266,13 +266,13 @@ export default function GetFullResponsePage() {
               ))}
             </div>
             <div className="flex flex-col gap-2">
-              <label className="text-sm" htmlFor="overall-comment">Optional: Your comments about the responses are helpful</label>
+              <label className="text-sm" htmlFor="overall-comment">Optional: Your comments about the responses are helpful. For example, you can note if the answer was clear, useful, or off-topic, e.g., “The explanation was detailed and easy to follow.”</label>
               <textarea
                 id="overall-comment"
                 value={overallComment}
                 onChange={e => setOverallComment(e.target.value)}
                 className="border rounded px-3 py-2 text-base bg-white min-h-[90px]"
-                placeholder="Add any comments about the responses (optional)"
+                placeholder="The explanation was clear and was relevant to the question."
               />
             </div>
             <Button type="submit" disabled={loading || !areRanksCompleteAndUnique(ranks, Math.min(3, responses.length))} className="w-full">{loading ? "⏳" : "Submit Rankings"}</Button>
