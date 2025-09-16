@@ -272,7 +272,7 @@ export default function GetFullResponsePage() {
                 value={overallComment}
                 onChange={e => setOverallComment(e.target.value)}
                 className="border rounded px-3 py-2 text-base bg-white min-h-[90px]"
-                placeholder="The explanation was clear and was relevant to the question."
+                placeholder="Add any comments about the responses (optional)"
               />
             </div>
             <Button type="submit" disabled={loading || !areRanksCompleteAndUnique(ranks, Math.min(3, responses.length))} className="w-full">{loading ? "⏳" : "Submit Rankings"}</Button>
