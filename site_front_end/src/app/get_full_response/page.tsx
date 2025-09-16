@@ -169,14 +169,10 @@ export default function GetFullResponsePage() {
           <div className="mb-4 p-6 bg-green-50 border-l-8 border-green-400 rounded shadow-md text-base text-muted-foreground">
             <h2 className="font-bold mb-3 text-2xl text-green-900">About</h2>
             <p className="text-lg leading-relaxed text-green-900">
-              Ask a question and receive the full generated response using context from the most relevant transcript segments inspired by the teachings of Rabbi Joseph B. Soloveitchik, "The Rav." Unlike the chunks page, this returns the complete model output.
+              Ask a question and receive the full generated response using context from the most relevant transcript segments inspired by the teachings of Rabbi Joseph B. Soloveitchik, "The Rav."
             </p>
             <div className="mt-4">
-              <h3 className="font-semibold text-xl text-green-900 mb-2">Information pages</h3>
               <ul className="list-disc pl-6 text-green-900">
-                <li><Link href="/get_chunks" className="underline">About get_chunks</Link></li>
-                <li><Link href="/chunks" className="underline">About chunks (alias)</Link></li>
-                <li><Link href="/get_full_response" className="underline">About get_full_response</Link></li>
               </ul>
             </div>
           </div>

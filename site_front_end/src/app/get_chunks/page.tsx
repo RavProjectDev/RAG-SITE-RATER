@@ -173,11 +173,7 @@ Your role is to rate how well each chunk captures the meaning and nuance of the 
 Whether you are a scholar, student, or admirer, your participation helps refine this system’s ability to faithfully reflect the Rav’s wisdom through vector embeddings. Thank you for contributing to this ongoing exploration.
             </p>
             <div className="mt-4">
-              <h3 className="font-semibold text-xl text-yellow-900 mb-2">Information pages</h3>
               <ul className="list-disc pl-6 text-yellow-900">
-                <li><Link href="/get_chunks" className="underline">About get_chunks</Link></li>
-                <li><Link href="/chunks" className="underline">About chunks (alias)</Link></li>
-                <li><Link href="/get_full_response" className="underline">About get_full_response</Link></li>
               </ul>
             </div>
           </div>
