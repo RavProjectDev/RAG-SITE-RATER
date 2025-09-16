@@ -164,6 +164,11 @@ export default function GetFullResponsePage() {
       {loading && <LoadingOverlay />}
       <Card className="w-full lg:max-w-4xl p-6 flex flex-col gap-10 shadow-lg">
         <h1 className="text-2xl font-bold mb-2 text-center">Full Response</h1>
+        <div className="flex justify-end -mt-2">
+          <Link href="/">
+            <Button variant="ghost" size="sm">Back to Home</Button>
+          </Link>
+        </div>
 
         {step === "ask" && (
           <div className="mb-4 p-6 bg-green-50 border-l-8 border-green-400 rounded shadow-md text-base text-muted-foreground">

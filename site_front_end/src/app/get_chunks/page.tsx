@@ -68,6 +68,7 @@ export default function Home() {
   const [embedding_type, setEmbeddingType] = useState("");
   const [chunks, setChunks] = useState<Chunk[]>([]);
   const [ratings, setRatings] = useState<{ [id: string]: number }>({});
+  const [overallComment, setOverallComment] = useState<string>("");
   const [step, setStep] = useState<"ask" | "rate" | "done">("ask");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -146,6 +147,7 @@ export default function Home() {
             ratings[chunk._id] ?? 0 // user rating, 
 
           ]),
+          comments: overallComment || undefined,
         }),
       });
     } catch (err) {
@@ -161,6 +163,11 @@ export default function Home() {
     <div className="min-h-screen flex flex-col items-center justify-center bg-background p-4">
       <Card className="w-full lg:max-w-4xl p-6 flex flex-col gap-10 shadow-lg">
         <h1 className="text-2xl font-bold mb-2 text-center">Chunk Rater</h1>
+        <div className="flex justify-end -mt-2">
+          <Link href="/">
+            <Button variant="ghost" size="sm">Back to Home</Button>
+          </Link>
+        </div>
         {/* About Section */}
         {step === "ask" && (
           <div className="mb-4 p-6 bg-yellow-50 border-l-8 border-yellow-400 rounded shadow-md text-base text-muted-foreground">
@@ -243,6 +250,16 @@ Whether you are a scholar, student, or admirer, your participation helps refine 
                 </div>
               ))}
             </div>
+            <div className="flex flex-col gap-2">
+              <label className="text-sm" htmlFor="overall-comment">Optional: Add any overall comments about these chunks (e.g., clarity, usefulness, off-topic notes).</label>
+              <textarea
+                id="overall-comment"
+                value={overallComment}
+                onChange={e => setOverallComment(e.target.value)}
+                className="border rounded px-3 py-2 text-base bg-white min-h-[90px]"
+                placeholder="Add overall comments (optional)"
+              />
+            </div>
             <Button
               type="submit"
               disabled={loading || chunks.some((c) => ratings[c._id] === undefined)}
@@ -256,7 +273,7 @@ Whether you are a scholar, student, or admirer, your participation helps refine 
           <div className="text-center flex flex-col gap-4 items-center">
             <div className="text-green-600 font-semibold text-lg">Thank you for your feedback!</div>
             <div className="text-muted-foreground text-base">Your question: <b>{question}</b></div>
-            <Button onClick={() => { setStep("ask"); setQuestion(""); setChunks([]); setRatings({}); }}>
+            <Button onClick={() => { setStep("ask"); setQuestion(""); setChunks([]); setRatings({}); setOverallComment(""); }}>
               Rate another question
             </Button>
           </div>

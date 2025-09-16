@@ -1,6 +1,9 @@
+from enum import Enum
+
 from pydantic import BaseModel, Field
 
 from rag.app.models.data import DocumentModel, SanityData, Metadata
+from rag.app.schemas.requests import TypeOfRequest
 
 
 class UploadRatingsDocument(BaseModel):
@@ -22,6 +25,7 @@ class UploadRatingsRequestCHUNK(BaseModel):
     user_question: str
     data: list[tuple[DocumentModel, int]]
     embedding_type: str
+    comments: str | None = None
 
 
 class DataFullUpload(BaseModel):
@@ -62,9 +66,22 @@ class FullResponseRankingModel(BaseModel):
         }
 
 
+class FormRequestType(str, Enum):
+    PROMPT = "FULL"
+    CHUNK = "CHUNK"
+
+
 class CommentModel(BaseModel):
     comments: str
     user_question: str
+    type_of_request: FormRequestType
+
+    def to_dict(self) -> dict:
+        return {
+            "comments": self.comments,
+            "user_question": self.user_question,
+            "type_of_request": self.type_of_request,
+        }
 
 
 class Ratings(BaseModel):

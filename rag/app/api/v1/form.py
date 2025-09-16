@@ -31,7 +31,9 @@ from rag.app.schemas.form import (
     FullResponseRankingModel,
     DataFullUpload,
     CommentModel,
+    FormRequestType,
 )
+from rag.app.schemas.requests import TypeOfRequest
 from rag.app.schemas.response import ChatResponse, TranscriptData, FormFullResponse
 from rag.app.schemas.response import (
     FormGetChunksResponse,
@@ -140,6 +142,12 @@ async def upload_ratings(request: UploadRatingsRequestCHUNK, app_state: Request)
             embedding_type=request.embedding_type,
         )
         await collection.insert_one(model.to_dict())
+    comment_model = CommentModel(
+        comments=request.comments,
+        user_question=request.user_question,
+        type_of_request=FormRequestType.CHUNK,
+    )
+    await collection.insert_one(comment_model.to_dict())
     return SuccessResponse(success=True, message="ratings uploaded")
 
 
@@ -164,6 +172,7 @@ async def upload_ratings_full(request: UploadRatingsRequestFULL, app_state: Requ
     comment_model = CommentModel(
         comments=request.comments,
         user_question=request.user_question,
+        type_of_request=FormRequestType.PROMPT,
     )
     collection.insert_one(comment_model.model_dump())
     return SuccessResponse(success=True, message="full rankings uploaded")

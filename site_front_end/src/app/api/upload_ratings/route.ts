@@ -3,7 +3,7 @@ import { BASE_URL, GENERIC_ERROR_MESSAGE } from '@/lib/utils';
 
 export async function POST(req: NextRequest) {
   try {
-    const { user_question, document, embedding_type } = await req.json();
+    const { user_question, document, embedding_type, comments } = await req.json();
     if (!user_question || typeof user_question !== 'string') {
       return NextResponse.json({ error: GENERIC_ERROR_MESSAGE }, { status: 400 });
     }
@@ -15,6 +15,7 @@ export async function POST(req: NextRequest) {
         "user_question": user_question,
         "data": document,
         "embedding_type": embedding_type,
+        ...(typeof comments === 'string' && comments.trim() ? { comments } : {}),
       }),
     });
 
