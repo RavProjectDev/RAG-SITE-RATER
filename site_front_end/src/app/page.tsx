@@ -5,80 +5,110 @@ import { Button } from "@/components/ui/button";
 
 export default function Home() {
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-background p-4">
-      <Card className="w-full lg:max-w-4xl p-8 flex flex-col gap-6 shadow-lg">
-        <h1 className="text-3xl font-bold text-center">Welcome to The Rav RAG Project</h1>
-        <p className="text-center text-base text-muted-foreground">Exploring the Teachings of Rabbi Joseph B. Soloveitchik Through AI</p>
-
-        <div className="space-y-4">
-          <p className="text-base leading-relaxed">
-            This Retrieval-Augmented Generation (RAG) system is designed to help users explore and access the profound philosophical and halakhic teachings of Rabbi Joseph B. Soloveitchik, known as "The Rav." Our platform combines advanced AI technology with carefully curated texts to provide meaningful interactions with his scholarly works.
-          </p>
-
-          <div>
-            <h2 className="text-xl font-semibold mb-2">About This Evaluation System</h2>
-            <p className="text-base leading-relaxed">
-              This interface serves a dual purpose: providing access to The Rav's teachings while simultaneously measuring and improving our AI model's performance. Your participation helps us evaluate:
-            </p>
-            <ul className="list-disc pl-6 text-base leading-relaxed">
-              <li><strong>Model Accuracy</strong>: How well our system retrieves and presents relevant information</li>
-              <li><strong>User Satisfaction</strong>: The quality and usefulness of responses from a user perspective</li>
-              <li><strong>System Performance</strong>: Overall effectiveness of our RAG implementation</li>
-            </ul>
+    <div className="min-h-screen bg-gradient-to-b from-background to-muted/30">
+      <main className="mx-auto max-w-5xl px-4 py-12 md:py-16">
+        {/* Hero */}
+        <section className="text-center mb-10 md:mb-14">
+          <div className="inline-flex items-center rounded-full border bg-background px-3 py-1 text-xs text-muted-foreground shadow-sm">
+            Retrieval-Augmented Evaluation
           </div>
+          <h1 className="mt-4 text-4xl md:text-5xl font-bold tracking-tight">
+            The Rav RAG Evaluation
+          </h1>
+          <p className="mx-auto mt-4 max-w-2xl text-base md:text-lg text-muted-foreground">
+            Explore the teachings of Rabbi Joseph B. Soloveitchik through an AI system
+            grounded in curated texts. Help us measure and improve retrieval and
+            response quality.
+          </p>
+          <div className="mt-6 flex flex-col sm:flex-row gap-3 justify-center">
+            <Link href="/get_full_response">
+              <Button size="lg">Start with Full Response</Button>
+            </Link>
+            <Link href="/get_chunks">
+              <Button size="lg" variant="outline">Try Chunk Evaluation</Button>
+            </Link>
+          </div>
+        </section>
 
-          <div>
-            <h2 className="text-xl font-semibold mb-2">Choose Your Evaluation Mode</h2>
+        {/* About */}
+        <section className="mb-10 md:mb-14">
+          <Card className="p-6 md:p-8">
+            <div className="space-y-3 md:space-y-4">
+              <h2 className="text-xl md:text-2xl font-semibold">About the Project</h2>
+              <p className="text-base leading-relaxed text-muted-foreground">
+                This platform uses Retrieval-Augmented Generation (RAG) to surface relevant
+                passages from The Rav’s philosophical and halakhic writings, pairing them with
+                generated analysis. Your evaluations directly inform how we tune our
+                retrieval pipeline and model behavior.
+              </p>
+              <ul className="grid gap-2 text-sm md:text-base text-muted-foreground md:grid-cols-3">
+                <li className="flex items-start gap-2"><span>✅</span><span>Measure retrieval precision and coverage</span></li>
+                <li className="flex items-start gap-2"><span>✅</span><span>Assess end-to-end answer quality</span></li>
+                <li className="flex items-start gap-2"><span>✅</span><span>Ensure fidelity to source texts</span></li>
+              </ul>
+            </div>
+          </Card>
+        </section>
 
-            <div className="space-y-4">
-              <div className="p-4 border rounded-md bg-muted/50">
-                <h3 className="text-lg font-semibold">📄 Chunk Evaluation (<code>get_chunks</code>)</h3>
-                <div className="text-sm text-muted-foreground">Purpose: Evaluate information retrieval accuracy</div>
-                <ul className="list-disc pl-6 mt-2 text-base leading-relaxed">
-                  <li>Submit a question drawn from our curated list</li>
-                  <li>Receive up to 5 extracted text chunks relevant to your query</li>
-                  <li>Score each chunk on a 0–100 scale for relevance and usefulness</li>
-                  <li>Help us tune embeddings and retrieval quality</li>
+        {/* Modes */}
+        <section className="mb-10 md:mb-14">
+          <h2 className="text-xl md:text-2xl font-semibold mb-4">Choose an Evaluation Mode</h2>
+          <div className="grid gap-4 md:grid-cols-2">
+            <Card className="p-5 md:p-6">
+              <div className="space-y-2">
+                <h3 className="text-lg font-semibold">📄 Chunk Evaluation</h3>
+                <p className="text-sm text-muted-foreground">Best for testing retrieval quality</p>
+                <ul className="list-disc pl-5 text-sm md:text-base space-y-1">
+                  <li>Submit a question from our curated list</li>
+                  <li>Receive up to five relevant text chunks</li>
+                  <li>Score each chunk’s relevance on a 0–100 scale</li>
                 </ul>
-                <div className="text-sm mt-2">Best for: Measuring search precision and document matching.</div>
-                <div className="mt-3">
+                <div className="pt-2">
                   <Link href="/get_chunks">
                     <Button>Go to Chunk Evaluation</Button>
                   </Link>
                 </div>
               </div>
-
-              <div className="p-4 border rounded-md bg-muted/50">
-                <h3 className="text-lg font-semibold">🔍 Full Response Evaluation (<code>get_full</code>)</h3>
-                <div className="text-sm text-muted-foreground">Purpose: Evaluate complete AI-generated responses</div>
-                <ul className="list-disc pl-6 mt-2 text-base leading-relaxed">
-                  <li>Ask a question about The Rav’s teachings</li>
-                  <li>Receive 3 complete responses at increasing LLM interference levels (1 = least → 3 = most)</li>
-                  <li>Assign a unique rank: 1 = Best, 2 = Middle, 3 = Worst</li>
-                  <li>Optionally add an overall comment about the responses</li>
+            </Card>
+            <Card className="p-5 md:p-6">
+              <div className="space-y-2">
+                <h3 className="text-lg font-semibold">🔍 Full Response Evaluation</h3>
+                <p className="text-sm text-muted-foreground">Best for overall answer quality</p>
+                <ul className="list-disc pl-5 text-sm md:text-base space-y-1">
+                  <li>Ask about The Rav’s thought and teachings</li>
+                  <li>Review three responses with varying model guidance</li>
+                  <li>Rank them 1 (best), 2, and 3 (worst)</li>
                 </ul>
-                <div className="text-sm mt-2">Best for: Assessing end-to-end answer quality and user experience.</div>
-                <div className="mt-3">
+                <div className="pt-2">
                   <Link href="/get_full_response">
-                    <Button variant="outline">Go to Full Response Evaluation</Button>
+                    <Button variant="outline">Go to Full Response</Button>
                   </Link>
                 </div>
               </div>
-            </div>
+            </Card>
           </div>
+        </section>
 
-          <div>
-            <h2 className="text-xl font-semibold mb-2">Your Role as an Evaluator</h2>
-            <ul className="list-disc pl-6 text-base leading-relaxed">
-              <li>Fine-tune our retrieval algorithms</li>
-              <li>Improve response generation quality</li>
-              <li>Ensure respectful and accurate representation of The Rav's teachings</li>
-              <li>Enhance overall user satisfaction with the system</li>
+        {/* Evaluator guidance */}
+        <section>
+          <Card className="p-6 md:p-8">
+            <h2 className="text-xl md:text-2xl font-semibold mb-3">How Your Feedback Helps</h2>
+            <ul className="list-disc pl-6 text-sm md:text-base text-muted-foreground space-y-1">
+              <li>Improve retrieval ranking and chunk selection</li>
+              <li>Refine response structure, tone, and faithfulness to sources</li>
+              <li>Guide future dataset curation and evaluation criteria</li>
             </ul>
-            <p className="mt-2 text-base leading-relaxed">Ready to begin? Select your preferred evaluation mode and start exploring The Rav's profound contributions to Jewish thought and law.</p>
-          </div>
-        </div>
-      </Card>
+            <p className="mt-3 text-sm md:text-base">
+              Ready to begin? Choose a mode above and start evaluating.
+            </p>
+          </Card>
+        </section>
+
+        {/* Footer note */}
+        <p className="mt-8 text-center text-xs text-muted-foreground">
+          Built with RAG for respectful engagement with The Rav’s writings.
+        </p>
+      </main>
     </div>
   );
 }
