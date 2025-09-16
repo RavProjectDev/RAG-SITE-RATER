@@ -87,6 +87,7 @@ async def handler(
     try:
         # Generate prompt and metadata
         transcript_data: list[TranscriptData]
+
         prompt, transcript_data = await asyncio.wait_for(
             generate(
                 user_question=chat_request.question,
@@ -117,7 +118,7 @@ async def handler(
             async def full_response():
                 llm_response = await get_llm_response(
                     metrics_connection=metrics_conn,
-                    prompt=prompt,
+                    prompt=prompt.value,
                     model=llm_configuration,
                 )
                 return ChatResponse(
