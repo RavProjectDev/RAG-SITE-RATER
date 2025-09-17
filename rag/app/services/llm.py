@@ -290,6 +290,6 @@ def generate_prompt(
 
 def get_prompt_template(prompt: int = None) -> str:
     if not prompt:
-        return PROMPTS["production"]
+        return PROMPTS["1"]
     else:
         return PROMPTS[str(prompt)]
