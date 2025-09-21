@@ -1,5 +1,3 @@
-from cmd import PROMPT
-
 PROMPTS = {
     "1": """You are a Rav Soloveitchik expert assistant. Your primary role is to present relevant quotes with minimal organizational structure.
 
