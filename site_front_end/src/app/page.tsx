@@ -1,116 +1,155 @@
 "use client";
-import Link from "next/link";
-import { Card } from "@/components/ui/card";
+import { useState, useEffect } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
+import { Lightbulb, CheckCircle } from "lucide-react";
+import { getNextExampleQuestion } from "@/data/example-questions";
 
 export default function Home() {
+  const [question, setQuestion] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showSuccess, setShowSuccess] = useState(false);
+  const [exampleQuestion, setExampleQuestion] = useState("");
+  const router = useRouter();
+  const searchParams = useSearchParams();
+
+  // Initialize example question on mount
+  useEffect(() => {
+    setExampleQuestion(getNextExampleQuestion());
+  }, []);
+
+  // Check if user just submitted a rating
+  useEffect(() => {
+    if (searchParams.get("submitted") === "true") {
+      setShowSuccess(true);
+      // Clear the query parameter
+      router.replace("/", { scroll: false });
+      // Hide success message after 5 seconds
+      const timer = setTimeout(() => setShowSuccess(false), 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [searchParams, router]);
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!question.trim()) return;
+    
+    setIsSubmitting(true);
+    // Navigate to comparison page with question as query parameter
+    const encodedQuestion = encodeURIComponent(question.trim());
+    router.push(`/comparison?question=${encodedQuestion}`);
+  };
+
+  const handleUseExample = () => {
+    // Get next question in round-robin and update state
+    const nextQuestion = getNextExampleQuestion();
+    setQuestion(nextQuestion);
+    setExampleQuestion(nextQuestion);
+  };
+
   return (
-    <div className="min-h-screen bg-gradient-to-b from-background to-muted/30">
-      <main className="mx-auto max-w-5xl px-4 py-12 md:py-16">
-        {/* Hero */}
-        <section className="text-center mb-10 md:mb-14">
-          <div className="inline-flex items-center rounded-full border bg-background px-3 py-1 text-xs text-muted-foreground shadow-sm">
-            Retrieval-Augmented Evaluation
-          </div>
-          <h1 className="mt-4 text-4xl md:text-5xl font-bold tracking-tight">
-            The Rav RAG Evaluation
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800">
+      <main className="mx-auto max-w-3xl px-4 py-12 md:py-20">
+        {/* Title */}
+        <section className="text-center mb-8 md:mb-12">
+          <h1 className="text-4xl md:text-5xl font-bold tracking-tight bg-gradient-to-r from-gray-900 to-gray-600 dark:from-gray-100 dark:to-gray-400 bg-clip-text text-transparent mb-3">
+            RAG Response Evaluator
           </h1>
-          <p className="mx-auto mt-4 max-w-2xl text-base md:text-lg text-muted-foreground">
-            Explore the teachings of Rabbi Joseph B. Soloveitchik through an AI system
-            grounded in curated texts. Help us measure and improve retrieval and
-            response quality.
+          <p className="text-base text-gray-600 dark:text-gray-400">
+            Compare AI responses and help improve model quality
           </p>
-          <div className="mt-6 flex flex-col sm:flex-row gap-3 justify-center">
-            <Link href="/get_full_response">
-              <Button size="lg">Start with Full Response</Button>
-            </Link>
-            <Link href="/get_chunks">
-              <Button size="lg" variant="outline">Try Chunk Evaluation</Button>
-            </Link>
-          </div>
         </section>
 
-        {/* About */}
-        <section className="mb-10 md:mb-14">
-          <Card className="p-6 md:p-8">
-            <div className="space-y-3 md:space-y-4">
-              <h2 className="text-xl md:text-2xl font-semibold">About the Project</h2>
-              <p className="text-base leading-relaxed text-muted-foreground">
-                This platform uses Retrieval-Augmented Generation (RAG) to surface relevant
-                passages from The Rav’s philosophical and halakhic writings, pairing them with
-                generated analysis. Your evaluations directly inform how we tune our
-                retrieval pipeline and model behavior.
-              </p>
-              <ul className="grid gap-2 text-sm md:text-base text-muted-foreground md:grid-cols-3">
-                <li className="flex items-start gap-2"><span>✅</span><span>Measure retrieval precision and coverage</span></li>
-                <li className="flex items-start gap-2"><span>✅</span><span>Assess end-to-end answer quality</span></li>
-                <li className="flex items-start gap-2"><span>✅</span><span>Ensure fidelity to source texts</span></li>
-              </ul>
-            </div>
+        {/* Success Message */}
+        {showSuccess && (
+          <section className="mb-6">
+            <Card className="shadow-lg border-2 border-green-200 dark:border-green-800 bg-green-50 dark:bg-green-950/30">
+              <CardContent className="pt-6">
+                <div className="flex items-center gap-3">
+                  <CheckCircle className="h-6 w-6 text-green-600 dark:text-green-400 flex-shrink-0" />
+                  <div className="flex-1">
+                    <p className="font-semibold text-green-900 dark:text-green-100">
+                      Rating submitted successfully!
+                    </p>
+                    <p className="text-sm text-green-700 dark:text-green-300">
+                      You can ask another question below to continue.
+                    </p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </section>
+        )}
+
+        {/* Question Input Section */}
+        <section id="question-form">
+          <Card className="shadow-xl border-2">
+            <CardHeader>
+              <CardTitle className="text-2xl font-bold text-center">
+                Ask a Question
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <form onSubmit={handleSubmit} className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="question" className="text-base font-semibold">
+                    Your Question
+                  </Label>
+                  <Textarea
+                    id="question"
+                    placeholder="Type your question here..."
+                    value={question}
+                    onChange={(e) => setQuestion(e.target.value)}
+                    className="min-h-32 text-base"
+                    required
+                  />
+                </div>
+                
+                <div className="flex flex-col sm:flex-row gap-3">
+                  <Button
+                    type="submit"
+                    size="lg"
+                    className="flex-1 h-12 text-base font-semibold shadow-lg hover:shadow-xl transition-all"
+                    disabled={!question.trim() || isSubmitting}
+                  >
+                    {isSubmitting ? "Loading..." : "Compare Responses →"}
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="lg"
+                    onClick={handleUseExample}
+                    className="h-12 text-base font-semibold"
+                  >
+                    <Lightbulb className="mr-2 h-4 w-4" />
+                    Use Example
+                  </Button>
+                </div>
+              </form>
+
+              {/* Example Question Display */}
+              {exampleQuestion && (
+                <div className="mt-6 p-4 bg-blue-50 dark:bg-blue-950/30 rounded-lg border border-blue-200 dark:border-blue-800">
+                  <div className="flex items-start gap-3">
+                    <Lightbulb className="h-5 w-5 text-blue-600 dark:text-blue-400 mt-0.5 flex-shrink-0" />
+                    <div className="flex-1">
+                      <p className="text-sm font-semibold text-blue-900 dark:text-blue-100 mb-1">
+                        Example Question (click "Use Example" to cycle):
+                      </p>
+                      <p className="text-sm text-blue-700 dark:text-blue-300 italic">
+                        "{exampleQuestion}"
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </CardContent>
           </Card>
         </section>
-
-        {/* Modes */}
-        <section className="mb-10 md:mb-14">
-          <h2 className="text-xl md:text-2xl font-semibold mb-4">Choose an Evaluation Mode</h2>
-          <div className="grid gap-4 md:grid-cols-2">
-            <Card className="p-5 md:p-6">
-              <div className="space-y-2">
-                <h3 className="text-lg font-semibold">📄 Chunk Evaluation</h3>
-                <p className="text-sm text-muted-foreground">Best for testing retrieval quality</p>
-                <ul className="list-disc pl-5 text-sm md:text-base space-y-1">
-                  <li>Submit a question from our curated list</li>
-                  <li>Receive up to five relevant text chunks</li>
-                  <li>Score each chunk’s relevance on a 0–100 scale</li>
-                </ul>
-                <div className="pt-2">
-                  <Link href="/get_chunks">
-                    <Button>Go to Chunk Evaluation</Button>
-                  </Link>
-                </div>
-              </div>
-            </Card>
-            <Card className="p-5 md:p-6">
-              <div className="space-y-2">
-                <h3 className="text-lg font-semibold">🔍 Full Response Evaluation</h3>
-                <p className="text-sm text-muted-foreground">Best for overall answer quality</p>
-                <ul className="list-disc pl-5 text-sm md:text-base space-y-1">
-                  <li>Ask about The Rav’s thought and teachings</li>
-                  <li>Review three responses with varying model guidance</li>
-                  <li>Rank them 1 (best), 2, and 3 (worst)</li>
-                </ul>
-                <div className="pt-2">
-                  <Link href="/get_full_response">
-                    <Button variant="outline">Go to Full Response</Button>
-                  </Link>
-                </div>
-              </div>
-            </Card>
-          </div>
-        </section>
-
-        {/* Evaluator guidance */}
-        <section>
-          <Card className="p-6 md:p-8">
-            <h2 className="text-xl md:text-2xl font-semibold mb-3">How Your Feedback Helps</h2>
-            <ul className="list-disc pl-6 text-sm md:text-base text-muted-foreground space-y-1">
-              <li>Improve retrieval ranking and chunk selection</li>
-              <li>Refine response structure, tone, and faithfulness to sources</li>
-              <li>Guide future dataset curation and evaluation criteria</li>
-            </ul>
-            <p className="mt-3 text-sm md:text-base">
-              Ready to begin? Choose a mode above and start evaluating.
-            </p>
-          </Card>
-        </section>
-
-        {/* Footer note */}
-        <p className="mt-8 text-center text-xs text-muted-foreground">
-          Built with RAG for respectful engagement with The Rav’s writings.
-        </p>
       </main>
     </div>
   );
 }
-
-

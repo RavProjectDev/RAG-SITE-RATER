@@ -31,3 +31,15 @@ Thumbs.db
 
 # misc
 .next/cache
+
+# Google Cloud service account keys
+gcloud-key.json
+service-account*.json
+*.json
+!package.json
+!package-lock.json
+!tsconfig.json
+!components.json
+!eslint.config.mjs
+!postcss.config.mjs
+!next.config.ts
