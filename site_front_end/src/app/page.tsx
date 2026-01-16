@@ -8,6 +8,9 @@ import { Label } from "@/components/ui/label";
 import { Lightbulb, CheckCircle } from "lucide-react";
 import { getNextExampleQuestion } from "@/data/example-questions";
 
+// Force dynamic rendering to support useSearchParams
+export const dynamic = 'force-dynamic';
+
 export default function Home() {
   const [question, setQuestion] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
