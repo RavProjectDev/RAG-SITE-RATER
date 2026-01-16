@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useEffect } from "react";
+import { Suspense, useState, useMemo, useEffect } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -15,9 +15,6 @@ import type {
   ComparisonResult,
   Citation,
 } from "@/types/comparison";
-
-// Force dynamic rendering to support useSearchParams
-export const dynamic = 'force-dynamic';
 
 // Helper function to transform backend response to ComparisonData
 function transformBackendResponse(
@@ -86,7 +83,7 @@ function transformBackendResponse(
   };
 }
 
-export default function ComparisonPage() {
+function ComparisonContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const question = searchParams.get("question");
@@ -488,3 +485,23 @@ export default function ComparisonPage() {
   );
 }
 
+export default function ComparisonPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800 flex items-center justify-center p-4">
+        <Card className="max-w-md w-full">
+          <CardContent className="pt-6 pb-6">
+            <div className="flex flex-col items-center justify-center space-y-4">
+              <Loader2 className="h-8 w-8 animate-spin text-blue-600 dark:text-blue-400" />
+              <p className="text-center text-gray-600 dark:text-gray-400">
+                Loading...
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    }>
+      <ComparisonContent />
+    </Suspense>
+  );
+}
