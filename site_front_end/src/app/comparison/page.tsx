@@ -16,6 +16,9 @@ import type {
   Citation,
 } from "@/types/comparison";
 
+// Force dynamic rendering to support useSearchParams
+export const dynamic = 'force-dynamic';
+
 // Helper function to transform backend response to ComparisonData
 function transformBackendResponse(
   question: string,
